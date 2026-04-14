@@ -369,9 +369,8 @@
     const sphere = new THREE.Mesh(sphereGeo, sphereMat);
     scene.add(sphere);
 
-    // Track segments - three types
+    // Track segments
     let segments = [];
-    const segmentTypes = ['straight', 'triple', 'double', 'speedBoost'];
     const segmentLengths = { straight: 8, triple: 8, double: 8, speedBoost: 8 };
 
     function randomColor() {
@@ -471,10 +470,16 @@
     const bounceHeight = 1.5;
     const groundY = 0;
     const sphereRadius = 0.9;
-    const tFall = Math.sqrt(2 * bounceHeight / GRAVITY);
-    const bouncePeriod = 2 * tFall;
 
-    let pathColor = 0x3498db; // Color of previous straight track (ball's current color)
+    // Segment type constants
+    const SEGMENT_TYPES = {
+      STRAIGHT: 'straight',
+      TRIPLE: 'triple',
+      DOUBLE: 'double',
+      SPEED_BOOST: 'speedBoost'
+    };
+
+    let pathColor = 0x3498db;
 
     // Initialize segments
     function initSegments() {
@@ -534,6 +539,34 @@
     let shatterParticles = [];
     let shatterTime = 0;
     const shatterDuration = 1;
+
+    // Utility: dispose Three.js object
+    function disposeObject(obj) {
+      if (obj.geometry) obj.geometry.dispose();
+      if (obj.material) obj.material.dispose();
+    }
+
+    // Utility: cleanup array of objects
+    function cleanupArray(arr, scene, useTraverse = false) {
+      arr.forEach(obj => {
+        scene.remove(obj);
+        if (useTraverse) {
+          obj.traverse(disposeObject);
+        } else {
+          disposeObject(obj);
+        }
+      });
+      arr.length = 0;
+    }
+
+    // Check if player reached win condition
+    function checkWinCondition() {
+      if (collisionCount >= collisionsToWin && !blackHoleActive) {
+        blackHoleActive = true;
+        blackHoleZ = -30;
+        createBlackHole(blackHoleZ);
+      }
+    }
 
     // Speed boost state
     let speedBoostActive = false;
@@ -906,12 +939,7 @@
     // Speed boost particles
     function createSpeedBoostParticles() {
       // Clear existing particles
-      speedBoostParticles.forEach(p => {
-        scene.remove(p);
-        p.geometry.dispose();
-        p.material.dispose();
-      });
-      speedBoostParticles.length = 0;
+      cleanupArray(speedBoostParticles, scene);
 
       for (let i = 0; i < speedBoostParticleCount; i++) {
         const geometry = new THREE.SphereGeometry(0.1, 8, 8);
@@ -955,12 +983,7 @@
     }
 
     function clearSpeedBoostParticles() {
-      speedBoostParticles.forEach(p => {
-        scene.remove(p);
-        p.geometry.dispose();
-        p.material.dispose();
-      });
-      speedBoostParticles.length = 0;
+      cleanupArray(speedBoostParticles, scene);
     }
 
     // Lights
@@ -1089,12 +1112,7 @@
         document.getElementById('gameOver').style.display = 'none';
 
         // Clean up shatter particles
-        shatterParticles.forEach(p => {
-          scene.remove(p);
-          p.geometry.dispose();
-          p.material.dispose();
-        });
-        shatterParticles = [];
+        cleanupArray(shatterParticles, scene);
 
         // Resume game - ball stays at current position in the track
         sphere.visible = true;
@@ -1138,7 +1156,7 @@
         shatterTime += dt;
         shatterParticles.forEach(p => {
           p.userData.velocity.y -= GRAVITY * dt;
-          p.position.add(p.userData.velocity.clone().multiplyScalar(dt));
+          p.position.addScaledVector(p.userData.velocity, dt);
           p.rotation.x += p.userData.rotationSpeed.x * dt;
           p.rotation.y += p.userData.rotationSpeed.y * dt;
           p.rotation.z += p.userData.rotationSpeed.z * dt;
@@ -1167,7 +1185,7 @@
       if (speedBoostActive) {
         speedBoostTimer -= dt;
         // Update particles orbiting around ball
-        updateSpeedBoostParticles(performance.now() / 1000);
+        updateSpeedBoostParticles(currentTime / 1000);
         if (speedBoostTimer <= 0) {
           speedBoostActive = false;
           speedBoostTimer = 0;
@@ -1208,13 +1226,7 @@
           // Survived! Show combo
           showCombo();
           collisionCount++;
-          // Check win condition
-          if (collisionCount >= collisionsToWin && !blackHoleActive) {
-            blackHoleActive = true;
-            // Spawn black hole ahead of current position
-            blackHoleZ = -30;
-            createBlackHole(blackHoleZ);
-          }
+          checkWinCondition();
         }
 
         // Speed boost track - activate immediately
@@ -1227,12 +1239,7 @@
           // Survived! Show combo
           showCombo();
           collisionCount++;
-          // Check win condition
-          if (collisionCount >= collisionsToWin && !blackHoleActive) {
-            blackHoleActive = true;
-            blackHoleZ = -30;
-            createBlackHole(blackHoleZ);
-          }
+          checkWinCondition();
         }
 
         // Check collision for triple/double segments (straight excluded)
@@ -1269,12 +1276,7 @@
             // Survived! Show combo
             showCombo();
             collisionCount++;
-            // Check win condition
-            if (collisionCount >= collisionsToWin && !blackHoleActive) {
-              blackHoleActive = true;
-              blackHoleZ = -30;
-              createBlackHole(blackHoleZ);
-            }
+            checkWinCondition();
           } else {
             // Didn't land on any block (between blocks) - game over
             currentSegmentIndex = nextIndex;
@@ -1456,12 +1458,7 @@
         blackHole.position.z += effectiveVelocity * dt;
 
         // Check if ball is absorbed
-        const bhPos = blackHole.position;
-        const dist = Math.sqrt(
-          Math.pow(sphere.position.x - bhPos.x, 2) +
-          Math.pow(sphere.position.y - bhPos.y, 2) +
-          Math.pow(sphere.position.z - bhPos.z, 2)
-        );
+        const dist = sphere.position.distanceTo(blackHole.position);
         if (dist < 2.5) {
           // Ball absorbed by black hole - victory!
           triggerVictory();
