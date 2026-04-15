@@ -4,6 +4,7 @@ import {
   StandardMaterial,
   ShaderMaterial,
   Color3,
+  Color4,
   Effect
 } from '@babylonjs/core';
 
@@ -45,35 +46,46 @@ export class TrackSegment {
   }
 
   createStraight() {
-    this.mesh = MeshBuilder.CreatePlane('straight', { width: 6, height: 1.5, subdivisions: 32 }, this.scene);
-    this.mesh.rotation.x = Math.PI / 2;
-    this.mesh.position.set(0, 0, this.position);
+    this.mesh = MeshBuilder.CreateBox('straight', { width: 6, height: 0.2, depth: 1.5 }, this.scene);
+    this.mesh.position.set(0, -0.1, this.position);
     this.material = this.createRippleMaterial();
     this.mesh.material = this.material;
+
     this.mesh.trackSegment = this;
   }
 
   createDouble() {
     this.mesh = MeshBuilder.CreateBox('double', { width: 6, height: 0.01, depth: 1.5 }, this.scene);
-    this.mesh.position.set(0, -0.5, this.position);
+    this.mesh.isVisible = false;
+    this.mesh.position.set(0, -0.1, this.position);
 
-    const blockWidth = 2.0;
-    const spacing = 2.5;
-    const startX = -1.25;
-    const colors = this.shuffleColors(2);
+    const blockWidth = 2.8;
+    const spacing = 3.0;
+    const startX = -1.5;
+    
+    // Ensure the required path color is always one of the choices
+    const requiredColor = this.color.color;
+    const allColors = [COLORS.pink, COLORS.yellow, COLORS.blue];
+    const otherColors = allColors.filter(c => c.r !== requiredColor.r || c.g !== requiredColor.g || c.b !== requiredColor.b);
+    const otherColor = otherColors[Math.floor(Math.random() * otherColors.length)];
+    const colors = [requiredColor, otherColor];
+    if (Math.random() > 0.5) {
+      [colors[0], colors[1]] = [colors[1], colors[0]];
+    }
 
     for (let i = 0; i < 2; i++) {
       const mat = new StandardMaterial(`doubleBlock${i}`, this.scene);
       mat.diffuseColor = colors[i];
-      mat.emissiveColor = colors[i].scale(0.5);
-      mat.specularColor = new Color3(0.3, 0.3, 0.3);
+      mat.emissiveColor = colors[i].scale(0.3);
+      mat.specularColor = new Color3(1, 1, 1);
+      mat.specularPower = 64;
 
-      const block = MeshBuilder.CreateBox(`doubleBlock${i}`, { width: blockWidth, height: 0.15, depth: 1.5 }, this.scene);
+      const block = MeshBuilder.CreateBox(`doubleBlock${i}`, { width: blockWidth, height: 0.2, depth: 1.5 }, this.scene);
       block.material = mat;
-      block.position.set(startX + i * spacing, -0.45, 0);
+      block.position.set(startX + i * spacing, 0, 0);
       block.parent = this.mesh;
 
-      block.originalY = -0.45;
+      block.originalY = 0;
       block.pressing = false;
       block.pressTime = 0;
       this.blocks.push(block);
@@ -83,25 +95,27 @@ export class TrackSegment {
 
   createTriple() {
     this.mesh = MeshBuilder.CreateBox('triple', { width: 6, height: 0.01, depth: 1.5 }, this.scene);
-    this.mesh.position.set(0, -0.5, this.position);
+    this.mesh.isVisible = false;
+    this.mesh.position.set(0, -0.1, this.position);
 
-    const blockWidth = 2.0;
-    const spacing = 2.2;
-    const startX = -2.2;
+    const blockWidth = 1.9;
+    const spacing = 2.0;
+    const startX = -2.0;
     const colors = this.shuffleColors(3);
 
     for (let i = 0; i < 3; i++) {
       const mat = new StandardMaterial(`tripleBlock${i}`, this.scene);
       mat.diffuseColor = colors[i];
-      mat.emissiveColor = colors[i].scale(0.5);
-      mat.specularColor = new Color3(0.3, 0.3, 0.3);
+      mat.emissiveColor = colors[i].scale(0.3);
+      mat.specularColor = new Color3(1, 1, 1);
+      mat.specularPower = 64;
 
-      const block = MeshBuilder.CreateBox(`tripleBlock${i}`, { width: blockWidth, height: 0.15, depth: 1.5 }, this.scene);
+      const block = MeshBuilder.CreateBox(`tripleBlock${i}`, { width: blockWidth, height: 0.2, depth: 1.5 }, this.scene);
       block.material = mat;
-      block.position.set(startX + i * spacing, -0.45, 0);
+      block.position.set(startX + i * spacing, 0, 0);
       block.parent = this.mesh;
 
-      block.originalY = -0.45;
+      block.originalY = 0;
       block.pressing = false;
       block.pressTime = 0;
       this.blocks.push(block);
@@ -166,11 +180,6 @@ export class TrackSegment {
       this.material.setFloat('uImpactTime', time);
       this.material.setFloat('uTime', time);
     }
-    // Trigger press on all blocks
-    for (const block of this.blocks) {
-      block.pressing = true;
-      block.pressTime = 0;
-    }
   }
 
   update(time, dt) {
@@ -182,13 +191,20 @@ export class TrackSegment {
       if (block.pressing) {
         block.pressTime += dt;
         const pressDuration = 0.15;
-        const pressDepth = 0.12;
+        const pressDepth = 0.25;
 
+        // Mechanical keyboard press: 30% down, 70% up
         if (block.pressTime < pressDuration) {
           const t = block.pressTime / pressDuration;
-          const easeOut = 1 - Math.pow(1 - t, 3);
-          block.position.y = block.originalY - pressDepth * Math.sin(easeOut * Math.PI);
-          block.material.emissiveIntensity = 0.5 + 0.5 * (1 - easeOut);
+          let yOffset = 0;
+          if (t < 0.3) {
+            yOffset = (t / 0.3) * pressDepth;
+          } else {
+            yOffset = (1.0 - (t - 0.3) / 0.7) * pressDepth;
+          }
+          block.position.y = block.originalY - yOffset;
+          // Subtly increase brightness when pushed down
+          block.material.emissiveIntensity = 0.5 + yOffset * 2.0;
         } else {
           block.pressing = false;
           block.position.y = block.originalY;
@@ -226,7 +242,7 @@ export class TrackManager {
     const firstSegment = this.createSegment('straight', 0, firstColor);
     this.segments.push(firstSegment);
 
-    let currentZ = SEGMENT_LENGTH;
+    let currentZ = SEGMENT_LENGTH + this.segmentGap;
     for (let i = 1; i < 25; i++) {
       const type = this.selectNextSegmentType(i);
       let segColor;
@@ -238,7 +254,7 @@ export class TrackManager {
       }
       const segment = this.createSegment(type, -currentZ, segColor);
       this.segments.push(segment);
-      currentZ += SEGMENT_LENGTH;
+      currentZ += SEGMENT_LENGTH + this.segmentGap;
     }
   }
 

@@ -61,6 +61,21 @@
       text-shadow: 0 0 10px var(--glow-color), 0 0 20px var(--glow-color);
     }
 
+    /* Countdown Display */
+    #countdownDisplay {
+      display: none;
+      position: fixed;
+      top: 40%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 150px;
+      font-weight: bold;
+      color: #fff;
+      text-shadow: 0 0 20px #15befc, 0 0 40px #15befc;
+      z-index: 500;
+      pointer-events: none;
+    }
+
     /* Victory Overlay */
     #victory {
       display: none;
@@ -207,6 +222,9 @@
     <div id="comboText">PERFECT</div>
     <div id="comboCount">x1</div>
   </div>
+
+  <!-- Countdown -->
+  <div id="countdownDisplay">3</div>
 
   <!-- Victory -->
   <div id="victory">

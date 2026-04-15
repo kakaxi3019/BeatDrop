@@ -22,10 +22,10 @@ import { TrackManager, COLORS } from './Track.js';
 // Level configurations
 const LEVELS = [
   { id: 1, name: "Miller's Planet", nameCn: "第1关", trackTypes: ['straight'], jumpsToWin: 1 },
-  { id: 2, name: "Mann's World", nameCn: "第2关", trackTypes: ['straight', 'double', 'speedBoost'], jumpsToWin: 10 },
-  { id: 3, name: "Edmunds' Planet", nameCn: "第3关", trackTypes: ['straight', 'double', 'triple', 'speedBoost'], jumpsToWin: 20 },
-  { id: 4, name: "Gargantua's Edge", nameCn: "第4关", trackTypes: ['straight', 'double', 'triple', 'speedBoost'], jumpsToWin: 200 },
-  { id: 5, name: "The Tesseract", nameCn: "第5关", trackTypes: ['straight', 'double', 'triple', 'speedBoost'], jumpsToWin: 1000 }
+  { id: 2, name: "Mann's World", nameCn: "第2关", trackTypes: ['straight', 'double'], jumpsToWin: 10 },
+  { id: 3, name: "Edmunds' Planet", nameCn: "第3关", trackTypes: ['straight', 'double', 'triple'], jumpsToWin: 20 },
+  { id: 4, name: "Gargantua's Edge", nameCn: "第4关", trackTypes: ['straight', 'double', 'triple'], jumpsToWin: 100 },
+  { id: 5, name: "The Tesseract", nameCn: "第5关", trackTypes: ['straight', 'double', 'triple'], jumpsToWin: 200 }
 ];
 
 // Physics constants
@@ -52,26 +52,37 @@ void main() {
 const blackHoleFragmentShader = `
 precision highp float;
 uniform float uTime;
-uniform vec3 uColor1;
 uniform vec3 uColor2;
 uniform vec3 uColor3;
 varying vec2 vUv;
 void main() {
   vec2 center = vUv - 0.5;
   float dist = length(center);
+  
+  // Clear event horizon boundary
+  float eventHorizon = smoothstep(0.16, 0.15, dist);
+  
+  // Clean, elegant glowing accretion disk
+  float innerGlow = smoothstep(0.15, 0.18, dist);
+  float outerFade = smoothstep(0.40, 0.18, dist);
+  float ring = innerGlow * outerFade;
+  
+  // Subtle rotation pulse for dynamism without clutter
   float angle = atan(center.y, center.x);
-  float spiral = sin(angle * 12.0 - dist * 30.0 + uTime * 3.0) * 0.5 + 0.5;
-  float rings = sin(dist * 40.0 - uTime * 5.0) * 0.5 + 0.5;
-  float pattern = mix(spiral, rings, 0.5);
-  vec3 color = mix(uColor1, uColor2, dist * 2.0);
-  color = mix(color, uColor3, pattern * smoothstep(0.3, 0.6, dist));
-  float centerDark = smoothstep(0.25, 0.0, dist);
-  color = mix(color, vec3(0.0), centerDark);
-  float edgeGlow = smoothstep(0.5, 0.48, dist) * smoothstep(0.45, 0.48, dist);
-  color += uColor3 * edgeGlow * 2.0;
-  float pulse = sin(uTime * 2.0) * 0.1 + 0.9;
-  color *= pulse;
-  gl_FragColor = vec4(color, 1.0);
+  float pulse = sin(angle * 2.0 - uTime * 3.0) * 0.15 + 0.85;
+  
+  // Mix colors
+  vec3 color = mix(uColor2, uColor3, smoothstep(0.25, 0.15, dist));
+  color *= ring * pulse * 2.5;
+  
+  // Pure black center
+  color = mix(color, vec3(0.0), eventHorizon);
+  
+  // Alpha fading smoothly with the ring
+  float alpha = ring + eventHorizon;
+  if(alpha < 0.01) discard;
+  
+  gl_FragColor = vec4(color, alpha);
 }
 `;
 
@@ -84,7 +95,7 @@ export class Game {
 
     // Game state
     this.currentLevel = 1;
-    this.unlockedLevels = [1];
+    this.unlockedLevels = [1, 2, 3, 4, 5];
     this.continueCount = 3;
     this.collisionCount = 0;
     this.gameState = 'paused';
@@ -116,6 +127,7 @@ export class Game {
 
     // Black hole
     this.blackHoleActive = false;
+    this.blackHoleSucking = false;
     this.blackHole = null;
     this.blackHoleZ = -30;
 
@@ -159,18 +171,20 @@ export class Game {
   }
 
   setupEffects() {
-    this.glowLayer = new GlowLayer('glow', this.scene, { mainTextureFixedSize: 512, blurKernelSize: 32 });
-    this.glowLayer.intensity = 0.6;
+    this.glowLayer = new GlowLayer('glow', this.scene, { mainTextureFixedSize: 1024, blurKernelSize: 16 });
+    this.glowLayer.intensity = 0.8;
 
     this.pipeline = new DefaultRenderingPipeline('pipeline', true, this.scene, [this.camera]);
     this.pipeline.bloomEnabled = true;
-    this.pipeline.bloomThreshold = 0.8;
-    this.pipeline.bloomWeight = 0.15;
-    this.pipeline.bloomKernel = 32;
-    this.pipeline.bloomScale = 0.3;
+    this.pipeline.bloomThreshold = 0.9;
+    this.pipeline.bloomWeight = 0.1;
+    this.pipeline.bloomKernel = 16;
+    this.pipeline.bloomScale = 0.5;
     this.pipeline.imageProcessingEnabled = true;
+    this.pipeline.imageProcessing.contrast = 1.1;
+    this.pipeline.imageProcessing.exposure = 1.05;
     this.pipeline.imageProcessing.vignetteEnabled = true;
-    this.pipeline.imageProcessing.vignetteWeight = 0.5;
+    this.pipeline.imageProcessing.vignetteWeight = 0.6;
   }
 
   setupBall() {
@@ -194,6 +208,7 @@ export class Game {
       comboDisplay: document.getElementById('comboDisplay'),
       comboText: document.getElementById('comboText'),
       comboCount: document.getElementById('comboCount'),
+      countdownDisplay: document.getElementById('countdownDisplay'),
       currentDistance: document.getElementById('currentDistance'),
       targetDistance: document.getElementById('targetDistance'),
       levelNum: document.getElementById('levelNum'),
@@ -222,11 +237,12 @@ export class Game {
   }
 
   getLevelDescription(level) {
-    if (level.jumpsToWin >= 200) return '混合轨道 · 200跳通关';
-    if (level.jumpsToWin >= 1000) return '混合轨道 · 1000跳通关';
-    if (level.trackTypes.includes('triple')) return '直线 + 双色块 + 三色块 + 加速轨道';
-    if (level.trackTypes.includes('double')) return '直线 + 双色块 + 加速轨道';
-    return '全部直线轨道';
+    if (level.id === 1) return '全直线轨道 · 1跳测试';
+    if (level.id === 2) return '直线 + 双色块轨道 · 10跳通关';
+    if (level.id === 3) return '直线 + 双色 + 三色块轨道 · 20跳通关';
+    if (level.id === 4) return '直线 + 双色 + 三色块轨道 · 100跳通关';
+    if (level.id === 5) return '终极混合轨道挑战 · 200跳通关';
+    return '混合轨道';
   }
 
   setupEventListeners() {
@@ -267,7 +283,7 @@ export class Game {
     this.speedBoostActive = false;
     this.speedBoostTimer = 0;
     this.blackHoleActive = false;
-    this.blackHole = null;
+    this.blackHoleSucking = false;
     this.comboCount = 0;
 
     // Reset ball
@@ -290,9 +306,8 @@ export class Game {
     this.trackManager.initialize(level);
 
     // Velocity
-    const distance = SEGMENT_LENGTH + 0.3;
-    const bouncePeriod = 2 * Math.sqrt(2 * BOUNCE_HEIGHT / GRAVITY);
-    this.sharedVelocity = distance / bouncePeriod;
+    // Initialize sharedVelocity to 0 so the track doesn't move until the ball first lands
+    this.sharedVelocity = 0;
 
     // UI
     this.ui.levelNum.textContent = level.nameCn;
@@ -302,7 +317,7 @@ export class Game {
     this.ui.gameOver.style.display = 'none';
     this.ui.victory.style.display = 'none';
     this.ui.comboDisplay.style.display = 'none';
-    this.glowLayer.intensity = 0.6;
+    this.glowLayer.intensity = 0.8;
     this.lastTime = performance.now();
   }
 
@@ -315,6 +330,10 @@ export class Game {
     if (this.gameState === 'gameOver') {
       this.updateShatter(dt);
       return;
+    }
+
+    if (this.gameState === 'countdown' || this.gameState === 'playing') {
+      this.ball.position.x = Math.max(-2.9, Math.min(2.9, this.mouseX * this.mouseSensitivity));
     }
 
     if (this.gameState !== 'playing') return;
@@ -334,6 +353,7 @@ export class Game {
     const effectiveVelocity = this.sharedVelocity * (this.speedBoostActive ? this.speedBoostVelocityMultiplier : 1);
 
     // Ball physics
+    if (!this.blackHoleSucking) {
     if (this.onGround) {
       this.ballVY = Math.sqrt(2 * currentGravity * BOUNCE_HEIGHT);
       this.onGround = false;
@@ -346,15 +366,15 @@ export class Game {
     let segmentUnderBall = null;
     let segmentUnderBallIndex = -1;
 
+    let minZDist = Infinity;
+
     for (let i = 0; i < this.trackManager.segments.length; i++) {
       const seg = this.trackManager.segments[i];
-      const segZ = seg.mesh.position.z;
-      // Segment covers roughly from segZ - SEGMENT_LENGTH/2 to segZ + SEGMENT_LENGTH/2
-      // Ball is at z=0, so segment is under ball when its center is near 0
-      if (Math.abs(segZ) < SEGMENT_LENGTH) {
+      const dist = Math.abs(seg.mesh.position.z);
+      if (dist < minZDist) {
+        minZDist = dist;
         segmentUnderBall = seg;
         segmentUnderBallIndex = i;
-        break;
       }
     }
 
@@ -368,8 +388,8 @@ export class Game {
       }
     }
 
-    this.ball.position.x = Math.max(-3, Math.min(3, this.mouseX * this.mouseSensitivity));
     this.ball.rotation.z -= 0.03;
+    } // End physics check
 
     // Track segments
     for (let i = 0; i < this.trackManager.segments.length; i++) {
@@ -394,18 +414,15 @@ export class Game {
   }
 
   handleLanding(currentSeg, currentSegIndex, currentGravity) {
-    // Trigger track ripple shader
+    // Trigger track ripple shader (handles the sinking/depression animation)
     currentSeg.triggerRipple(this.currentTime);
-
-    // Create visual ripple effect at segment position
-    this.createRippleEffect(currentSeg);
 
     if (currentSeg.type === 'straight') {
       this.ball.position.x = 0;
       this.ballColor = currentSeg.color.color.clone();
       this.ballMaterial.diffuseColor = this.ballColor;
-      this.ballMaterial.emissiveColor = this.ballColor.scale(0.5);
-      this.ballMaterial.emissiveIntensity = 0.5;
+      this.ballMaterial.emissiveColor = this.ballColor.scale(0.2);
+      this.ballMaterial.emissiveIntensity = 0.2;
       this.pathColor = this.ballColor;
       this.onSurvived();
 
@@ -439,22 +456,23 @@ export class Game {
       }
     }
 
-    // Find next segment (the one ahead, with larger z)
+    // Find next segment (the one behind in Z since tracks start at negative Z and move to +Z)
     let nextSeg = null;
-    let minNextZ = Infinity;
+    let maxPrevZ = -Infinity;
     for (let i = 0; i < this.trackManager.segments.length; i++) {
       const seg = this.trackManager.segments[i];
-      if (seg.mesh.position.z > currentSeg.mesh.position.z && seg.mesh.position.z < minNextZ) {
-        minNextZ = seg.mesh.position.z;
+      if (seg.mesh.position.z < currentSeg.mesh.position.z && seg.mesh.position.z > maxPrevZ) {
+        maxPrevZ = seg.mesh.position.z;
         nextSeg = seg;
       }
     }
 
     // Calculate velocity based on distance to next segment
     if (nextSeg) {
-      const distance = Math.abs(nextSeg.mesh.position.z - currentSeg.mesh.position.z);
+      // Calculate distance relative to 0 (the ball's Z) to eliminate integration drift over time
+      const distanceToZero = Math.abs(nextSeg.mesh.position.z);
       const bouncePeriod = 2 * Math.sqrt(2 * BOUNCE_HEIGHT / currentGravity);
-      this.sharedVelocity = distance / bouncePeriod;
+      this.sharedVelocity = distanceToZero / bouncePeriod;
     }
 
     this.currentSegmentIndex = currentSegIndex;
@@ -462,8 +480,8 @@ export class Game {
 
   getBlockIndex(ballX, segmentType) {
     const blockCount = segmentType === 'triple' ? 3 : 2;
-    const blockWidth = 2.0;
-    const spacing = segmentType === 'triple' ? 2.2 : 2.5;
+    const blockWidth = segmentType === 'triple' ? 1.9 : 2.8;
+    const spacing = segmentType === 'triple' ? 2.0 : 3.0;
     const startX = -(blockCount - 1) * spacing / 2;
     for (let i = 0; i < blockCount; i++) {
       const blockX = startX + i * spacing;
@@ -499,14 +517,26 @@ export class Game {
 
   activateBlackHole() {
     this.blackHoleActive = true;
-    this.blackHoleZ = -30;
+    
+    // Spawn at the very end of the current visible tracks
+    let minZ = 0;
+    for (const seg of this.trackManager.segments) {
+      if (seg.mesh.position.z < minZ) minZ = seg.mesh.position.z;
+    }
+    
+    
+    this.blackHoleZ = minZ - SEGMENT_LENGTH;
+    this.blackHoleInitialDist = Math.abs(this.blackHoleZ - this.ball.position.z);
+    this.distanceAtSpawn = this.collisionCount * 20;
+
     this.createBlackHole(this.blackHoleZ);
   }
 
   createBlackHole(z) {
     try {
-      const coreGeo = MeshBuilder.CreateSphere('blackHoleCore', { diameter: 5, segments: 32 }, this.scene);
-
+      // Use a flat plane facing the screen relative to standard view
+      const coreGeo = MeshBuilder.CreatePlane('blackHoleCore', { width: 12, height: 12 }, this.scene);
+      
       const shaderName = 'blackHole';
       Effect.ShadersStore[`${shaderName}VertexShader`] = blackHoleVertexShader;
       Effect.ShadersStore[`${shaderName}FragmentShader`] = blackHoleFragmentShader;
@@ -515,36 +545,24 @@ export class Game {
         vertex: shaderName, fragment: shaderName
       }, {
         attributes: ['position', 'normal', 'uv'],
-        uniforms: ['worldViewProjection', 'uTime', 'uColor1', 'uColor2', 'uColor3']
+        uniforms: ['worldViewProjection', 'uTime', 'uColor2', 'uColor3'],
+        needAlphaBlending: true
       });
 
       coreMat.setFloat('uTime', 0);
-      coreMat.setColor3('uColor1', new Color3(0, 0, 0));
-      coreMat.setColor3('uColor2', new Color3(0.29, 0, 0.5));
-      coreMat.setColor3('uColor3', new Color3(1, 0.42, 0));
+      coreMat.setColor3('uColor2', new Color3(0.1, 0.6, 1.0)); // Clean neon blue
+      coreMat.setColor3('uColor3', new Color3(1.0, 1.0, 1.0)); // White core edge
       coreMat.backFaceCulling = false;
+      coreMat.alphaMode = 1; // ALPHA_ADD
+      coreMat.needAlphaBlending = () => true;
 
       coreGeo.material = coreMat;
-      coreGeo.position.set(0, 2, z);
+      coreGeo.position.set(0, 3.5, z); // Floating a bit above ground
+      // Face towards incoming track
+      coreGeo.rotation.x = Math.PI / 8; // slight tilt
       coreGeo.isPickable = false;
 
-      // Create rings using CreateTorus
-      const ringColors = [new Color3(1, 0.42, 0), new Color3(0.67, 0, 1), new Color3(0.29, 0, 0.5)];
-      this.blackHoleRings = [];
-      for (let i = 0; i < 3; i++) {
-        const ringGeo = MeshBuilder.CreateTorus(`ring${i}`, { diameter: 5.6 + i * 1.0, thickness: 0.4, tessellation: 32 }, this.scene);
-        const ringMat = new StandardMaterial(`ringMat${i}`, this.scene);
-        ringMat.diffuseColor = ringColors[i];
-        ringMat.emissiveColor = ringColors[i];
-        ringMat.alpha = 0.4 - i * 0.1;
-        ringMat.backFaceCulling = false;
-        ringGeo.material = ringMat;
-        ringGeo.rotation.x = Math.PI / 2;
-        ringGeo.position.set(0, 0, 0.01 + i * 0.02);
-        ringGeo.parent = coreGeo;
-        ringGeo.isPickable = false;
-        this.blackHoleRings.push({ mesh: ringGeo, speed: 0.5 + i * 0.3, dir: i % 2 === 0 ? 1 : -1 });
-      }
+      this.blackHoleRings = []; // removed inner rings to keep it clean
 
       this.blackHole = coreGeo;
       this.blackHole.userData = { isBlackHole: true };
@@ -559,33 +577,34 @@ export class Game {
     const mat = this.blackHole.material;
     if (mat && mat.setFloat) mat.setFloat('uTime', this.currentTime);
 
-    this.blackHole.rotation.y += dt * 0.5;
-    this.blackHole.rotation.z += dt * 0.3;
+    // Slowly rotate the black hole effect
+    this.blackHole.rotation.z += dt * 0.5;
     this.blackHole.position.z += effectiveVelocity * dt;
 
-    // Update rings
-    if (this.blackHoleRings) {
-      for (let i = 0; i < this.blackHoleRings.length; i++) {
-        const ring = this.blackHoleRings[i];
-        ring.mesh.rotation.z += dt * ring.speed * ring.dir;
-      }
-    }
-
     const dist = Vector3.Distance(this.ball.position, this.blackHole.position);
-    if (dist < 2.5) {
+    
+    // Suck-in logic towards the direct center of the goal
+    if (dist < 5) {
+      this.blackHoleSucking = true;
+      const pullStrength = dt * 2.0; 
+      // Pull heavily towards center
+      this.ball.position = Vector3.Lerp(this.ball.position, this.blackHole.position, pullStrength);
+      
+      // Visually shrink ball to look like it's getting sucked in
+      const scaleDown = Math.max(0.01, dist / 5);
+      this.ball.scaling.set(scaleDown, scaleDown, scaleDown);
+    }
+    
+    if (dist < 1.0) {
       this.triggerVictory();
       return;
-    }
-    if (dist < 10) {
-      const pullStrength = (10 - dist) * 0.01;
-      this.ball.position.x += (this.blackHole.position.x - this.ball.position.x) * pullStrength;
-      this.ball.position.y += (this.blackHole.position.y - this.ball.position.y) * pullStrength;
     }
   }
 
   triggerVictory() {
     this.gameState = 'victory';
     this.ball.visibility = 0;
+    this.ball.scaling.set(1,1,1); // reset for next play
     this.unlockNextLevel();
     const level = LEVELS[this.currentLevel - 1];
     const victoryTitle = document.querySelector('#victory h1');
@@ -605,172 +624,14 @@ export class Game {
   }
 
   createRippleEffect(segment) {
-    const color = segment.type === 'straight' ? segment.color.color : new Color3(1, 1, 1);
-    const trackY = segment.type === 'straight' ? 0.15 : -0.3;
-
-    // Track dimensions
-    const trackWidth = 6;
-    const trackDepth = 1.5;
-
-    // Create 4 lines forming a rectangular frame that expands
-    for (let ring = 0; ring < 3; ring++) {
-      const delay = ring * 0.15;
-      const alpha = 0.6 - ring * 0.15;
-
-      // Create horizontal lines (top and bottom)
-      const hLineGeo = MeshBuilder.CreatePlane(`hLine${ring}`, {
-        width: trackWidth,
-        height: 0.08,
-        sideOrientation: Mesh.DOUBLESIDE
-      }, this.scene);
-      const hLineMat = new StandardMaterial(`hLineMat${ring}`, this.scene);
-      hLineMat.emissiveColor = color;
-      hLineMat.disableLighting = true;
-      hLineMat.alpha = alpha;
-      hLineMat.backFaceCulling = false;
-      hLineGeo.material = hLineMat;
-      hLineGeo.rotation.x = Math.PI / 2;
-      hLineGeo.position.set(0, trackY + 0.03, -(trackDepth / 2 - 0.04));
-      hLineGeo.parent = segment.mesh;
-      hLineGeo.userData = {
-        type: 'rippleLine',
-        age: -delay,
-        axis: 'horizontal',
-        maxExpand: 1.5 + ring * 0.6,
-        life: 1.2,
-        color: color
-      };
-      this.scene.addMesh(hLineGeo);
-      this.ripples.push(hLineGeo);
-
-      // Bottom horizontal line
-      const hLineGeo2 = hLineGeo.clone(`hLine2${ring}`);
-      hLineGeo2.position.z = trackDepth / 2 - 0.04;
-      hLineGeo2.parent = segment.mesh;
-      hLineGeo2.userData = { ...hLineGeo.userData };
-      this.scene.addMesh(hLineGeo2);
-      this.ripples.push(hLineGeo2);
-
-      // Create vertical lines (left and right)
-      const vLineGeo = MeshBuilder.CreatePlane(`vLine${ring}`, {
-        width: 0.08,
-        height: trackDepth,
-        sideOrientation: Mesh.DOUBLESIDE
-      }, this.scene);
-      const vLineMat = new StandardMaterial(`vLineMat${ring}`, this.scene);
-      vLineMat.emissiveColor = color;
-      vLineMat.disableLighting = true;
-      vLineMat.alpha = alpha;
-      vLineMat.backFaceCulling = false;
-      vLineGeo.material = vLineMat;
-      vLineGeo.rotation.x = Math.PI / 2;
-      vLineGeo.position.set(-(trackWidth / 2 - 0.04), trackY + 0.03, 0);
-      vLineGeo.parent = segment.mesh;
-      vLineGeo.userData = {
-        type: 'rippleLine',
-        age: -delay,
-        axis: 'vertical',
-        maxExpand: 1.5 + ring * 0.6,
-        life: 1.2,
-        color: color
-      };
-      this.scene.addMesh(vLineGeo);
-      this.ripples.push(vLineGeo);
-
-      // Right vertical line
-      const vLineGeo2 = vLineGeo.clone(`vLine2${ring}`);
-      vLineGeo2.position.x = trackWidth / 2 - 0.04;
-      vLineGeo2.parent = segment.mesh;
-      vLineGeo2.userData = { ...vLineGeo.userData };
-      this.scene.addMesh(vLineGeo2);
-      this.ripples.push(vLineGeo2);
-    }
-
-    // Create flash at impact point
-    const flashGeo = MeshBuilder.CreateSphere('flash', { diameter: 0.5, segments: 8 }, this.scene);
-    const flashMat = new StandardMaterial('flashMat', this.scene);
-    flashMat.emissiveColor = new Color3(1, 1, 1);
-    flashMat.disableLighting = true;
-    flashGeo.material = flashMat;
-    flashGeo.position.set(0, trackY + 0.1, 0);
-    flashGeo.parent = segment.mesh;
-    flashGeo.userData = { type: 'flash', age: 0, life: 0.3 };
-    this.scene.addMesh(flashGeo);
-    this.ripples.push(flashGeo);
+    // Emptied: Visual effects removed, only track depression remains
   }
 
   updateRipples(dt) {
-    for (let i = this.ripples.length - 1; i >= 0; i--) {
-      const r = this.ripples[i];
-      const ud = r.userData;
-      ud.age += dt;
-
-      if (ud.type === 'rippleLine') {
-        // Handle delay
-        if (ud.age < 0) continue;
-
-        const progress = ud.age / ud.life;
-        if (progress < 1) {
-          // Expand outward
-          const expand = 1 + (ud.maxExpand - 1) * progress;
-          if (ud.axis === 'horizontal') {
-            r.scaling.set(expand, 1, 1);
-            // Move outward in z
-            const sign = r.position.z > 0 ? 1 : -1;
-            const halfDepth = 0.75; // trackDepth / 2
-            r.position.z = sign * (halfDepth - 0.04 + (halfDepth * expand - halfDepth));
-          } else {
-            r.scaling.set(1, 1, expand);
-            // Move outward in x
-            const sign = r.position.x > 0 ? 1 : -1;
-            const halfWidth = 3; // trackWidth / 2
-            r.position.x = sign * (halfWidth - 0.04 + (halfWidth * expand - halfWidth));
-          }
-
-          // Fade out
-          const fadeStart = 0.5;
-          if (progress > fadeStart) {
-            r.material.alpha = (1 - (progress - fadeStart) / (1 - fadeStart)) * 0.5;
-          }
-        } else {
-          this.scene.removeMesh(r);
-          r.dispose();
-          this.ripples.splice(i, 1);
-        }
-        continue;
-      }
-
-      if (ud.type === 'flash') {
-        const progress = ud.age / ud.life;
-        if (progress < 1) {
-          const scale = 1 + progress * 3;
-          r.scaling.set(scale, scale, scale);
-          r.material.alpha = 1 - progress;
-        } else {
-          this.scene.removeMesh(r);
-          r.dispose();
-          this.ripples.splice(i, 1);
-        }
-        continue;
-      }
-
-      if (ud.type === 'spray') {
-        r.position.x += ud.vx * dt;
-        r.position.z += ud.vz * dt;
-        r.position.y += ud.vy * dt;
-        ud.vy -= 9.8 * dt;
-        ud.vx *= 0.95;
-        ud.vz *= 0.95;
-        ud.life -= ud.decay * dt;
-        r.material.alpha = Math.max(0, ud.life);
-        if (ud.life <= 0 || r.position.y < -0.3) {
-          this.scene.removeMesh(r);
-          r.dispose();
-          this.ripples.splice(i, 1);
-        }
-      }
-    }
+    // Emptied: Visual effects removed
   }
+
+
 
   createSpeedBoostParticles() {
     this.clearSpeedBoostParticles();
@@ -879,9 +740,11 @@ export class Game {
 
   updateDistanceDisplay() {
     if (this.blackHoleActive && this.blackHole) {
-      const initialGap = 30;
       const currentGap = Math.abs(this.blackHole.position.z - this.ball.position.z);
-      const currentDistance = initialGap - currentGap;
+      // How much the black hole has moved towards us from its spawn
+      const traveledSinceSpawn = Math.max(0, this.blackHoleInitialDist - currentGap);
+      const currentDistance = this.distanceAtSpawn + traveledSinceSpawn;
+      
       this.ui.currentDistance.textContent = Math.floor(currentDistance) + 'm';
       this.ui.targetDistance.textContent = '目标：' + Math.floor(currentGap) + 'm';
     } else {
@@ -906,21 +769,37 @@ export class Game {
     this.ui.gameOver.style.display = 'none';
     this.clearShatterParticles();
     this.ball.visibility = 1;
-    const currentSeg = this.trackManager.segments[this.currentSegmentIndex];
-    this.ball.position.set(0, BOUNCE_HEIGHT + SPHERE_RADIUS, currentSeg.mesh.position.z);
+    this.ball.position.set(0, BOUNCE_HEIGHT + SPHERE_RADIUS, 0);
     this.ballMaterial.diffuseColor = this.ballColor;
-    this.ballMaterial.emissiveColor = this.ballColor;
-    this.ballMaterial.emissiveIntensity = 0.5;
+    this.ballMaterial.emissiveColor = this.ballColor.scale(0.2);
+    this.ballMaterial.emissiveIntensity = 0;
+    this.sharedVelocity = 0;
     this.ballVY = 0;
     this.onGround = false;
-    this.gameState = 'playing';
+    this.gameState = 'countdown';
     this.speedBoostActive = false;
     this.speedBoostTimer = 0;
-    this.glowLayer.intensity = 0.6;
+    this.glowLayer.intensity = 0.8;
     this.clearSpeedBoostParticles();
     this.ui.comboDisplay.style.display = 'none';
     if (this.comboTimeout) clearTimeout(this.comboTimeout);
-    this.lastTime = performance.now();
+    
+    // Start countdown
+    let count = 3;
+    this.ui.countdownDisplay.style.display = 'block';
+    this.ui.countdownDisplay.textContent = count;
+    
+    const countInterval = setInterval(() => {
+      count--;
+      if (count > 0) {
+        this.ui.countdownDisplay.textContent = count;
+      } else {
+        clearInterval(countInterval);
+        this.ui.countdownDisplay.style.display = 'none';
+        this.gameState = 'playing';
+        this.lastTime = performance.now();
+      }
+    }, 1000);
   }
 
   returnToLevelSelect() {
