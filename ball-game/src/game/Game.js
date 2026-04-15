@@ -332,7 +332,7 @@ export class Game {
       return;
     }
 
-    if (this.gameState === 'countdown' || this.gameState === 'playing') {
+    if ((this.gameState === 'countdown' || this.gameState === 'playing') && !this.blackHoleSucking) {
       this.ball.position.x = Math.max(-2.9, Math.min(2.9, this.mouseX * this.mouseSensitivity));
     }
 
@@ -424,6 +424,7 @@ export class Game {
       this.ballMaterial.emissiveColor = this.ballColor.scale(0.2);
       this.ballMaterial.emissiveIntensity = 0.2;
       this.pathColor = this.ballColor;
+      currentSeg.triggerOuterRipple(0);
       this.onSurvived();
 
     } else if (currentSeg.type === 'speedBoost') {
@@ -439,12 +440,13 @@ export class Game {
       const blockIndex = this.getBlockIndex(ballX, currentSeg.type);
 
       if (blockIndex >= 0 && currentSeg.blocks && currentSeg.blocks[blockIndex]) {
-        const blockColor = currentSeg.blocks[blockIndex].material.diffuseColor;
-        if (this.colorsMatch(this.ballColor, blockColor)) {
+        const blockColor = currentSeg.blocks[blockIndex].blockColor;
+        if (blockColor && this.colorsMatch(this.ballColor, blockColor)) {
           // Trigger block press animation
           const block = currentSeg.blocks[blockIndex];
           block.pressing = true;
           block.pressTime = 0;
+          currentSeg.triggerOuterRipple(blockIndex);
           this.onSurvived();
         } else {
           this.onGameOver();
@@ -586,7 +588,13 @@ export class Game {
     // Suck-in logic towards the direct center of the goal
     if (dist < 5) {
       this.blackHoleSucking = true;
-      const pullStrength = dt * 2.0; 
+    }
+
+    if (this.blackHoleSucking) {
+      // Move ball with the track movement so relative distance closes correctly
+      this.ball.position.z += effectiveVelocity * dt;
+
+      const pullStrength = dt * 5.0; 
       // Pull heavily towards center
       this.ball.position = Vector3.Lerp(this.ball.position, this.blackHole.position, pullStrength);
       
@@ -595,7 +603,8 @@ export class Game {
       this.ball.scaling.set(scaleDown, scaleDown, scaleDown);
     }
     
-    if (dist < 1.0) {
+    // Victory trigger - more lenient distance or if ball is already tiny
+    if (dist < 1.5 || (this.blackHoleSucking && this.ball.scaling.x < 0.1)) {
       this.triggerVictory();
       return;
     }
