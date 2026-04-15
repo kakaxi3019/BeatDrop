@@ -387,6 +387,7 @@
       group.position.z = z;
       group.userData.length = 8;
       group.userData.color = color;
+      group.userData.mesh = mesh;
       scene.add(group);
       return group;
     }
@@ -443,7 +444,6 @@
     function createSpeedBoostSegment(z) {
       const group = new THREE.Group();
       group.userData.type = 'speedBoost';
-      // White glowing track
       const mat = new THREE.MeshStandardMaterial({
         color: 0xffffff,
         emissive: 0xffffff,
@@ -454,6 +454,7 @@
       group.add(mesh);
       group.position.z = z;
       group.userData.length = 8;
+      group.userData.mesh = mesh;
       scene.add(group);
       return group;
     }
@@ -487,7 +488,6 @@
       const availableTypes = level.trackTypes;
 
       segments = [];
-      // First straight
       const firstColor = randomColor();
       const firstStraight = createStraightSegment(0, firstColor);
       segments.push(firstStraight);
@@ -638,7 +638,7 @@
     document.querySelectorAll('.level-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const level = parseInt(btn.dataset.level);
-        if (!unlockedLevels.includes(level)) return; // Can't select locked levels
+        if (!unlockedLevels.includes(level)) return;
         currentLevel = level;
         document.getElementById('levelSelect').style.display = 'none';
         startLevel();
@@ -673,17 +673,14 @@
     function startLevel() {
       const level = LEVELS[currentLevel - 1];
       collisionsToWin = level.jumpsToWin;
-      targetDistance = collisionsToWin * 20; // 每跳约20米
-      continueCount = 3; // Reset continue count
+      targetDistance = collisionsToWin * 20;
+      continueCount = 3;
 
-      // Update level name display
       document.getElementById('levelNum').textContent = level.nameCn;
       document.getElementById('levelTitle').textContent = level.name;
 
-      // Update level buttons lock state
       updateLevelButtons();
 
-      // Reset game state
       sphere.visible = true;
       sphere.position.set(0, bounceHeight + sphereRadius, 0);
       sphereMat.color.setHex(0x3498db);
@@ -691,7 +688,6 @@
       sphereMat.emissiveIntensity = 0;
       ballColor = 0x3498db;
 
-      // Clean up old segments
       segments.forEach(seg => {
         seg.traverse(child => {
           if (child.geometry) child.geometry.dispose();
@@ -702,6 +698,7 @@
 
       // Clean up ripples
       ripples.forEach(r => {
+        if (r.parent) r.parent.remove(r);
         r.geometry.dispose();
         r.material.dispose();
       });
@@ -716,6 +713,7 @@
       }
 
       initSegments();
+      
       sphereVY = 0;
       onGround = true;
       currentSegmentIndex = 0;
@@ -865,74 +863,89 @@
       document.getElementById('victory').style.display = 'block';
     }
 	
-    // Simple expanding ring ripple effect
+    // Enhanced ripple effect with track deformation
     const ripples = [];
 
     function createRipple(parentObject, localX, localZ, color) {
-      // Create simple expanding ring particles - like water ripple waves
-      const ringCount = 3;
-      const particlesPerRing = 24;
+      // Create expanding ripple rings with feathered edges
+      const ringCount = 5;
       
       for (let ring = 0; ring < ringCount; ring++) {
-        for (let i = 0; i < particlesPerRing; i++) {
-          const geo = new THREE.SphereGeometry(0.04, 6, 6);
-          const mat = new THREE.MeshBasicMaterial({
-            color: 0xffffff,
-            transparent: true,
-            opacity: 0.9
-          });
-          const p = new THREE.Mesh(geo, mat);
-          
-          // Start at center
-          p.position.set(localX, 0.08, localZ);
-          
-          // Radial direction
-          const angle = (i / particlesPerRing) * Math.PI * 2;
-          const speed = 1.8 + ring * 0.5;
-          
-          p.userData.vx = Math.cos(angle) * speed;
-          p.userData.vz = Math.sin(angle) * speed;
-          p.userData.vy = -0.5 - ring * 0.1;
-          p.userData.life = 1;
-          p.userData.decay = 0.7;
-          p.userData.delay = ring * 0.06;
-          p.userData.age = 0;
-          p.userData.isRipple = true;
-          
-          parentObject.add(p);
-          if (!parentObject.userData.ripples) parentObject.userData.ripples = [];
-          parentObject.userData.ripples.push(p);
-          ripples.push(p);
-        }
+        const ringGeo = new THREE.RingGeometry(0.1, 0.2, 32);
+        const ringMat = new THREE.MeshBasicMaterial({
+          color: color,
+          transparent: true,
+          opacity: 0,
+          side: THREE.DoubleSide,
+          blending: THREE.AdditiveBlending
+        });
+        const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+        
+        ringMesh.position.set(localX, 0.08, localZ);
+        ringMesh.rotation.x = -Math.PI / 2;
+        
+        ringMesh.userData.isRippleRing = true;
+        ringMesh.userData.age = 0;
+        ringMesh.userData.delay = ring * 0.08;
+        ringMesh.userData.maxRadius = 4 + ring * 0.5;
+        ringMesh.userData.speed = 3.5;
+        ringMesh.userData.life = 1;
+        ringMesh.userData.ring = ring;
+        
+        parentObject.add(ringMesh);
+        if (!parentObject.userData.ripples) parentObject.userData.ripples = [];
+        parentObject.userData.ripples.push(ringMesh);
+        ripples.push(ringMesh);
       }
-      
-      // Add some sparkle particles
-      for (let i = 0; i < 12; i++) {
-        const geo = new THREE.SphereGeometry(0.06, 8, 8);
+
+      // Add particle spray effect
+      const sprayCount = 20;
+      for (let i = 0; i < sprayCount; i++) {
+        const geo = new THREE.SphereGeometry(0.05, 8, 8);
         const mat = new THREE.MeshBasicMaterial({
-          color: 0xffffcc,
+          color: color,
           transparent: true,
           opacity: 1
         });
         const p = new THREE.Mesh(geo, mat);
         
         p.position.set(localX, 0.08, localZ);
-        const angle = Math.random() * Math.PI * 2;
+        const angle = (i / sprayCount) * Math.PI * 2;
+        const speed = 1.5 + Math.random() * 1.0;
         
-        p.userData.vx = Math.cos(angle) * 1.2;
-        p.userData.vz = Math.sin(angle) * 1.2;
-        p.userData.vy = 0.8 + Math.random() * 0.5;
+        p.userData.vx = Math.cos(angle) * speed;
+        p.userData.vz = Math.sin(angle) * speed;
+        p.userData.vy = 0.3 + Math.random() * 0.4;
         p.userData.life = 1;
-        p.userData.decay = 0.6;
-        p.userData.delay = 0;
+        p.userData.decay = 1.2;
         p.userData.age = 0;
-        p.userData.isRipple = true;
+        p.userData.isSpray = true;
         
         parentObject.add(p);
         if (!parentObject.userData.ripples) parentObject.userData.ripples = [];
         parentObject.userData.ripples.push(p);
         ripples.push(p);
       }
+
+      // Add glow flash at impact point
+      const glowGeo = new THREE.CircleGeometry(0.5, 32);
+      const glowMat = new THREE.MeshBasicMaterial({
+        color: 0xffffff,
+        transparent: true,
+        opacity: 1,
+        blending: THREE.AdditiveBlending
+      });
+      const glow = new THREE.Mesh(glowGeo, glowMat);
+      glow.position.set(localX, 0.1, localZ);
+      glow.rotation.x = -Math.PI / 2;
+      glow.userData.isGlow = true;
+      glow.userData.age = 0;
+      glow.userData.life = 1;
+      
+      parentObject.add(glow);
+      if (!parentObject.userData.ripples) parentObject.userData.ripples = [];
+      parentObject.userData.ripples.push(glow);
+      ripples.push(glow);
     }
 
 
@@ -1054,7 +1067,7 @@
       });
       shatterParticles = [];
       ripples.forEach(r => {
-        scene.remove(r);
+        if (r.parent) r.parent.remove(r);
         r.geometry.dispose();
         r.material.dispose();
       });
@@ -1215,18 +1228,25 @@
 
         // If landing on straight track, change ball color
         if (currentSeg.userData.type === 'straight') {
-          const mat = currentSeg.children[0].material;
-          createRipple(currentSeg.children[0], 0, 0, mat.color.getHex());
-          sphereMat.color.setHex(mat.color.getHex());
-          sphereMat.emissive.setHex(mat.color.getHex());
+          const mesh = currentSeg.children[0];
+          const trackColor = currentSeg.userData.color;
+          createRipple(mesh, 0, 0, trackColor);
+          sphereMat.color.setHex(trackColor);
+          sphereMat.emissive.setHex(trackColor);
           sphereMat.emissiveIntensity = 0.5;
-          ballColor = mat.color.getHex();
+          ballColor = trackColor;
           // pathColor = ball's current color
           pathColor = ballColor;
           // Survived! Show combo
           showCombo();
           collisionCount++;
-          checkWinCondition();
+          // Check win condition
+          if (collisionCount >= collisionsToWin && !blackHoleActive) {
+            blackHoleActive = true;
+            // Spawn black hole ahead of current position
+            blackHoleZ = -30;
+            createBlackHole(blackHoleZ);
+          }
         }
 
         // Speed boost track - activate immediately
@@ -1239,7 +1259,12 @@
           // Survived! Show combo
           showCombo();
           collisionCount++;
-          checkWinCondition();
+          // Check win condition
+          if (collisionCount >= collisionsToWin && !blackHoleActive) {
+            blackHoleActive = true;
+            blackHoleZ = -30;
+            createBlackHole(blackHoleZ);
+          }
         }
 
         // Check collision for triple/double segments (straight excluded)
@@ -1276,7 +1301,12 @@
             // Survived! Show combo
             showCombo();
             collisionCount++;
-            checkWinCondition();
+            // Check win condition
+            if (collisionCount >= collisionsToWin && !blackHoleActive) {
+              blackHoleActive = true;
+              blackHoleZ = -30;
+              createBlackHole(blackHoleZ);
+            }
           } else {
             // Didn't land on any block (between blocks) - game over
             currentSegmentIndex = nextIndex;
@@ -1348,25 +1378,79 @@
 
         ripple.userData.age += dt;
 
-        if (ripple.userData.isRipple || ripple.userData.isParticle) {
-          // Skip if delay not reached
+        // Ripple ring expansion with feathering
+        if (ripple.userData.isRippleRing) {
           if (ripple.userData.age < ripple.userData.delay) continue;
           
-          // Update position
+          const activeTime = ripple.userData.age - ripple.userData.delay;
+          const progress = activeTime / 1.2; // 1.2 second lifetime
+          
+          if (progress < 1) {
+            // Expand ring
+            const currentRadius = ripple.userData.maxRadius * progress;
+            const thickness = 0.15 * (1 - progress * 0.5); // Thinner as it expands
+            
+            ripple.geometry.dispose();
+            ripple.geometry = new THREE.RingGeometry(
+              Math.max(0.05, currentRadius - thickness),
+              currentRadius + thickness,
+              32
+            );
+            
+            // Fade out with feathering (slower fade at start, faster at end)
+            const fadeStart = 0.3;
+            if (progress > fadeStart) {
+              const fadeProgress = (progress - fadeStart) / (1 - fadeStart);
+              ripple.material.opacity = (1 - fadeProgress * fadeProgress) * 0.6;
+            } else {
+              // Fade in quickly
+              ripple.material.opacity = (progress / fadeStart) * 0.6;
+            }
+          } else {
+            // Remove
+            ripple.userData.disposed = true;
+            if (ripple.parent) ripple.parent.remove(ripple);
+            ripple.geometry.dispose();
+            ripple.material.dispose();
+            ripples.splice(i, 1);
+          }
+        }
+        
+        // Spray particles
+        else if (ripple.userData.isSpray) {
+          // Update position with gravity
           ripple.position.x += ripple.userData.vx * dt;
           ripple.position.z += ripple.userData.vz * dt;
           ripple.position.y += ripple.userData.vy * dt;
           
-          // Slow down
-          ripple.userData.vx *= 0.98;
-          ripple.userData.vz *= 0.98;
+          ripple.userData.vy -= 9.8 * dt; // Gravity
+          ripple.userData.vx *= 0.95; // Air resistance
+          ripple.userData.vz *= 0.95;
           
           // Fade out
           ripple.userData.life -= ripple.userData.decay * dt;
-          ripple.material.opacity = Math.max(0, ripple.userData.life * 0.9);
+          ripple.material.opacity = Math.max(0, ripple.userData.life);
           
-          // Remove when faded
+          // Remove when faded or below track
           if (ripple.userData.life <= 0 || ripple.position.y < -0.3) {
+            ripple.userData.disposed = true;
+            if (ripple.parent) ripple.parent.remove(ripple);
+            ripple.geometry.dispose();
+            ripple.material.dispose();
+            ripples.splice(i, 1);
+          }
+        }
+        
+        // Impact glow flash
+        else if (ripple.userData.isGlow) {
+          const progress = ripple.userData.age / 0.3; // 0.3 second flash
+          
+          if (progress < 1) {
+            // Quick bright flash then fade
+            const intensity = Math.pow(1 - progress, 2);
+            ripple.material.opacity = intensity;
+            ripple.scale.set(1 + progress * 2, 1 + progress * 2, 1);
+          } else {
             ripple.userData.disposed = true;
             if (ripple.parent) ripple.parent.remove(ripple);
             ripple.geometry.dispose();
@@ -1468,9 +1552,9 @@
         // Pull ball toward black hole when close
         if (dist < 10) {
           const pullStrength = (10 - dist) * 0.01;
-          sphere.position.x += (bhPos.x - sphere.position.x) * pullStrength;
-          sphere.position.y += (bhPos.y - sphere.position.y) * pullStrength;
-          sphere.position.z += (bhPos.z - sphere.position.z) * pullStrength;
+          sphere.position.x += (blackHole.position.x - sphere.position.x) * pullStrength;
+          sphere.position.y += (blackHole.position.y - sphere.position.y) * pullStrength;
+          sphere.position.z += (blackHole.position.z - sphere.position.z) * pullStrength;
         }
       }
 
