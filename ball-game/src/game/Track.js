@@ -40,7 +40,7 @@ export class TrackSegment {
     // Each entry: { mesh, mat, active, elapsed }
     // Index maps directly to block index (straight/speedBoost → index 0)
     this.outerRippleStates  = [];
-    this.outerRippleDuration = 0.85;
+    this.outerRippleDuration = 2.0;
 
     this.create();
   }
@@ -221,7 +221,7 @@ export class TrackSegment {
    * @param {number} blockW     - parent block width  (world units)
    * @param {number} blockD     - parent block depth  (world units)
    * @param {Color3} color      - glow colour
-   * @returns {{ mesh, mat, active, elapsed }}
+   * @returns {{ mesh, mat, active, elapsed, triggered }}
    */
   _makeRippleState(parentMesh, blockW, blockD, color) {
     ensureOuterRippleShaders();
@@ -263,10 +263,10 @@ export class TrackSegment {
     plane.material   = mat;
     plane.parent     = parentMesh;
     // Local Y: Place it slightly below the track top surface to avoid z-fighting and let the glow sit behind/under
-    plane.position.set(0, -0.05, 0); 
+    plane.position.set(0, -0.05, 0);
     plane.isPickable = false;
 
-    return { mesh: plane, mat, active: false, elapsed: 0 };
+    return { mesh: plane, mat, active: false, elapsed: 0, triggered: false };
   }
 
   /**
@@ -276,7 +276,10 @@ export class TrackSegment {
    */
   triggerOuterRipple(blockIndex = 0) {
     const state = this.outerRippleStates[blockIndex];
+    // Guard: prevent re-trigger until this block's ripple has fully completed
     if (!state) return;
+    if (state.triggered && state.active) return;
+    state.triggered = true;
     state.active  = true;
     state.elapsed = 0;
     state.mat.setFloat('uElapsed', 0.0);
@@ -322,6 +325,7 @@ export class TrackSegment {
       state.elapsed += dt;
       if (state.elapsed >= this.outerRippleDuration) {
         state.active = false;
+        state.triggered = false;  // allow re-trigger after animation completes
         state.mat.setFloat('uElapsed', -1.0);  // deactivate / hide
       } else {
         state.mat.setFloat('uElapsed', state.elapsed);

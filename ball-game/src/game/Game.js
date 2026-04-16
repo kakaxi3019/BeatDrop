@@ -124,6 +124,9 @@ export class Game {
     // Combo
     this.comboCount = 0;
     this.comboTimeout = null;
+    this.justLandedSegment = null;
+    this.landingCooldown = 0;
+    this.ballLeftGround = false;
 
     // Black hole
     this.blackHoleActive = false;
@@ -295,6 +298,9 @@ export class Game {
     this.ball.visibility = 1;
     this.ballVY = 0;
     this.onGround = true;
+    this.justLandedSegment = null;
+    this.landingCooldown = 0;
+    this.ballLeftGround = true;
     this.currentSegmentIndex = 0;
     this.sharedVelocity = 0;
     this.gameState = 'playing';
@@ -332,11 +338,17 @@ export class Game {
       return;
     }
 
-    if ((this.gameState === 'countdown' || this.gameState === 'playing') && !this.blackHoleSucking) {
+    if (this.gameState === 'countdown') return;
+
+    if (this.gameState !== 'playing') return;
+
+    // Mouse X control
+    if (!this.blackHoleSucking) {
       this.ball.position.x = Math.max(-2.9, Math.min(2.9, this.mouseX * this.mouseSensitivity));
     }
 
-    if (this.gameState !== 'playing') return;
+    // Decrement landing cooldown
+    if (this.landingCooldown > 0) this.landingCooldown -= dt;
 
     // Speed boost
     if (this.speedBoostActive) {
@@ -362,7 +374,8 @@ export class Game {
     this.ball.position.y += this.ballVY * dt;
 
     // Find the segment under the ball before moving (based on z position)
-    const ballZ = 0; // Ball stays at z=0
+    const ballZ = 0; // Ball stays at z=0, segments move toward it
+    const ballX = this.ball.position.x;
     let segmentUnderBall = null;
     let segmentUnderBallIndex = -1;
 
@@ -370,7 +383,19 @@ export class Game {
 
     for (let i = 0; i < this.trackManager.segments.length; i++) {
       const seg = this.trackManager.segments[i];
-      const dist = Math.abs(seg.mesh.position.z);
+      const segZ = seg.mesh.position.z;
+
+      // Z boundary check: segment depth is 1.5, so half is 0.75
+      const zDist = ballZ - segZ;
+      if (Math.abs(zDist) > 0.75) continue;
+
+      // X boundary check: straight is width 6 (half=3), double/triple have blocks
+      // Use full track width for segment detection, then check individual block in handleLanding
+      const segHalfW = 3.0;
+
+      if (Math.abs(ballX) > segHalfW) continue;
+
+      const dist = Math.abs(zDist);
       if (dist < minZDist) {
         minZDist = dist;
         segmentUnderBall = seg;
@@ -383,15 +408,23 @@ export class Game {
       this.ball.position.y = GROUND_Y + SPHERE_RADIUS;
       this.onGround = true;
 
-      if (segmentUnderBall) {
+      // Only trigger landing if ball has actually left the ground since last landing
+      if (segmentUnderBall && this.ballLeftGround && this.landingCooldown <= 0) {
+        this.ballLeftGround = false;
+        this.landingCooldown = 0.5;
         this.handleLanding(segmentUnderBall, segmentUnderBallIndex, currentGravity);
       }
+    } else {
+      this.justLandedSegment = null;
+      // Ball is in the air: mark that it has left ground
+      if (this.ballVY > 0) this.ballLeftGround = true;
     }
 
     this.ball.rotation.z -= 0.03;
     } // End physics check
 
-    // Track segments
+    // Track segments — only move when playing (not during countdown)
+    if (this.gameState === 'playing') {
     for (let i = 0; i < this.trackManager.segments.length; i++) {
       const seg = this.trackManager.segments[i];
       seg.mesh.position.z += effectiveVelocity * dt;
@@ -406,6 +439,7 @@ export class Game {
         this.trackManager.recycleSegment(i, newZ);
       }
     }
+    }
 
     // Update effects
     this.updateRipples(dt);
@@ -418,7 +452,6 @@ export class Game {
     currentSeg.triggerRipple(this.currentTime);
 
     if (currentSeg.type === 'straight') {
-      this.ball.position.x = 0;
       this.ballColor = currentSeg.color.color.clone();
       this.ballMaterial.diffuseColor = this.ballColor;
       this.ballMaterial.emissiveColor = this.ballColor.scale(0.2);
@@ -428,7 +461,6 @@ export class Game {
       this.onSurvived();
 
     } else if (currentSeg.type === 'speedBoost') {
-      this.ball.position.x = 0;
       this.speedBoostActive = true;
       this.speedBoostTimer = this.speedBoostDuration;
       this.glowLayer.intensity = 1.2;
@@ -475,6 +507,10 @@ export class Game {
       const distanceToZero = Math.abs(nextSeg.mesh.position.z);
       const bouncePeriod = 2 * Math.sqrt(2 * BOUNCE_HEIGHT / currentGravity);
       this.sharedVelocity = distanceToZero / bouncePeriod;
+    } else {
+      // No next segment found, use minimum forward velocity to keep ball moving
+      const bouncePeriod = 2 * Math.sqrt(2 * BOUNCE_HEIGHT / currentGravity);
+      this.sharedVelocity = (SEGMENT_LENGTH + SEGMENT_GAP) / bouncePeriod;
     }
 
     this.currentSegmentIndex = currentSegIndex;
@@ -785,6 +821,10 @@ export class Game {
     this.sharedVelocity = 0;
     this.ballVY = 0;
     this.onGround = false;
+    this.justLandedSegment = null;
+    this.landingCooldown = 0;
+    this.ballLeftGround = true;
+    this.currentSegmentIndex = 0;
     this.gameState = 'countdown';
     this.speedBoostActive = false;
     this.speedBoostTimer = 0;
@@ -792,12 +832,12 @@ export class Game {
     this.clearSpeedBoostParticles();
     this.ui.comboDisplay.style.display = 'none';
     if (this.comboTimeout) clearTimeout(this.comboTimeout);
-    
+
     // Start countdown
     let count = 3;
     this.ui.countdownDisplay.style.display = 'block';
     this.ui.countdownDisplay.textContent = count;
-    
+
     const countInterval = setInterval(() => {
       count--;
       if (count > 0) {

@@ -111,56 +111,70 @@ void main() {
 export const outerRippleFragmentShader = `
 precision highp float;
 
-uniform float uElapsed;      
-uniform float uDuration;     
-uniform vec3  uColor;        
+uniform float uElapsed;
+uniform float uDuration;
+uniform vec3  uColor;
 
-uniform float uBlockHalfW;   
-uniform float uBlockHalfD;   
+uniform float uBlockHalfW;
+uniform float uBlockHalfD;
 
 varying vec3 vLocalPos;
 
-// Pseudo-random noise to mimic scattered particles
+// Pseudo-random noise for sparkle texture
 float random(vec2 st) {
     return fract(sin(dot(st.xy, vec2(12.9898,78.233))) * 43758.5453123);
+}
+
+// L4-Norm super-ellipse SDF for rectangular borders
+float superEllipseDist(vec2 p, float halfW, float halfD) {
+    vec2 q = abs(p) - vec2(halfW, halfD);
+    vec2 qPos = max(q, 0.0);
+    vec2 q2 = qPos * qPos;
+    return sqrt(sqrt(q2.x * q2.x + q2.y * q2.y));
+}
+
+// Single ring contribution: ring at given phase (0-1), with its own expand & fade
+float ringAtPhase(float dist, float phase, float maxExpand) {
+    // Each ring expands from inner edge outward
+    float ringRadius = phase * maxExpand;
+    float ringWidth  = 0.15 + phase * 0.1; // ring gets slightly wider as it expands
+
+    // Smooth ring band
+    float ring = 1.0 - smoothstep(ringRadius - ringWidth, ringRadius + ringWidth, dist);
+
+    // Fade: rings fade as they travel outward
+    float fade = 1.0 - smoothstep(0.0, 1.0, phase);
+
+    return ring * fade;
 }
 
 void main() {
   if (uElapsed < 0.0) discard;
 
-  float progress  = uElapsed / uDuration; // 0.0 to 1.0
-  
-  // 1. Grand expansion spanning much wider (but kept faint by our transparency)
-  float currentRadius = progress * 7.5 + 0.2;
-  
-  // L4-Norm super-ellipse distance
-  // This maintains highly rectangular, blocky borders (unlike standard circular Euclidean SDF),
-  // but perfectly smooths the 90-degree corners to completely eliminate the diagonal artifact 
-  // lines caused by the gradient snapping in standard max(x,y) Chebyshev boundaries.
-  vec2 q = abs(vec2(vLocalPos.x, vLocalPos.z)) - vec2(uBlockHalfW, uBlockHalfD);
-  vec2 qPos = max(q, 0.0);
-  vec2 q2 = qPos * qPos;
-  float dist = sqrt(sqrt(q2.x * q2.x + q2.y * q2.y));
+  float progress = uElapsed / uDuration; // 0.0 to 1.0
 
-  // 2. Base soft glow
-  float glow = 1.0 - smoothstep(0.0, currentRadius, dist);
-  
-  // 3. Very subtle and clean particle dissolve
-  float noise = random(vLocalPos.xz * 120.0);
-  
-  // Widened smoothstep for a much gentler, cleaner dissolve rather than harsh holes
-  float particleMask = smoothstep(noise - 0.2, noise + 0.5, glow * 1.5);
+  // Distance from block inner edge in local space (super-ellipse rect)
+  float dist = superEllipseDist(vec2(vLocalPos.x, vLocalPos.z), uBlockHalfW, uBlockHalfD);
 
-  // Faster fade out to keep the visual screen clean and non-cluttered
-  float fadeOut = 1.0 - smoothstep(0.0, 0.8, progress);
-  
-  // 4. Extreme transparency for a faint, pale aesthetic
-  float alpha = pow(glow, 2.2) * particleMask * fadeOut * 0.20; 
+  float maxExpand = 8.0;
+
+  // Single ring
+  float ring = ringAtPhase(dist, progress, maxExpand);
+
+  // Subtle sparkle texture
+  float noise = random(vLocalPos.xz * 80.0 + uElapsed * 2.0);
+  float sparkle = 0.8 + noise * 0.4;
+
+  // Compose rings
+  float rings = ring * sparkle;
+
+  // Overall envelope fade (CSS uses 2s duration, fade starts early)
+  float fadeOut = 1.0 - smoothstep(0.5, 1.0, progress);
+
+  float alpha = rings * fadeOut * 0.05;
 
   if (alpha < 0.005) discard;
 
-  float brightness = 1.0;
-
-  gl_FragColor = vec4(uColor * brightness, alpha);
+  gl_FragColor = vec4(uColor * 1.5, alpha);
 }
 `;
