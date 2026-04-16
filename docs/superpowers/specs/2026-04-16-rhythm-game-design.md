@@ -37,10 +37,12 @@ Difficulty = **beat density × energy multiplier**
 | Phase        | Beats per 8s | Block Type           | Speed Mult |
 |--------------|-------------|----------------------|------------|
 | Intro        | 2-4         | Straight             | 0.5x       |
-| Build-up     | 4-8         | Straight, Double     | 0.7x       |
-| First climax | 8-12        | Straight, Double     | 0.9x       |
-| Main climax  | 12-20       | Straight, Double, Triple | 1.2x   |
+| Build-up     | 4-6         | Straight, Double     | 0.7x       |
+| First climax | 6-8         | Straight, Double     | 0.9x       |
+| Main climax  | 8-12        | Straight, Double, Triple | 1.2x   |
 | Outro        | 2-4         | Straight             | 0.5x       |
+
+Density note: climax is ~2× intro density — challenging but never overwhelming. Main climax maxes at ~1 beat per 0.7s.
 
 Energy multiplier maps energy 0.005→0.26 linearly to speed 0.5→1.2.
 
@@ -62,8 +64,8 @@ For each beat time t:
 ### Per-Phase Block Selection
 - **Intro / Outro:** Straight tracks only
 - **Build-up:** 70% Straight, 30% Double
-- **First climax:** 40% Straight, 40% Double, 20% Triple
-- **Main climax:** 20% Straight, 50% Double, 30% Triple
+- **First climax:** 60% Straight, 30% Double, 10% Triple
+- **Main climax:** 40% Straight, 40% Double, 20% Triple (max triple rate to keep readable)
 
 Color assignment: Pink/Yellow/Blue, cycling or pseudo-random ensuring no impossible sequences.
 
@@ -77,7 +79,11 @@ Color assignment: Pink/Yellow/Blue, cycling or pseudo-random ensuring no impossi
 - Ball speed multiplier: `0.5 + energy * 2.8` (capped at 1.2)
 - Segment scroll speed: `sharedVelocity * speed_mult`
 
-### Collision Detection
+### Natural Motion
+- **Smooth speed transitions:** Speed multiplier lerps toward target at rate 3.0/s — never instant jumps
+- **Squash & stretch:** Ball scales Y on landing (squash) proportional to beat energy (max 0.8× Y-scale); stretches on ascent (max 1.2×)
+- **Elastic timing window:** Landing within ±50ms of beat is "Perfect"; within ±120ms is "Great"
+- **Inertia:** Ball X position has slight momentum — doesn't stop instantly when mouse stops
 - Ball Z stays at 0 (track moves toward ball)
 - On each beat, find segment whose Z is nearest to 0
 - If ball X within segmentHalfW and ball Y ≤ ground → trigger landing
