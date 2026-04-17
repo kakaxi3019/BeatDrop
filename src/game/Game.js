@@ -144,6 +144,11 @@ export class Game {
     this.shatterTime = 0;
     this.shatterDuration = 1;
 
+    // Beatmap (Level 3)
+    this.beatmap = null;
+    this.audioElement = null;
+    this.isLastSegmentApproaching = false;
+
     this.setupCamera();
     this.setupLights();
     this.setupEffects();
@@ -271,9 +276,39 @@ export class Game {
 
   resize() { this.engine.resize(); }
 
-  startLevel(levelId) {
+  async loadBeatmap() {
+    try {
+      const response = await fetch('./src/audio/beatmap-level3.json');
+      this.beatmap = await response.json();
+      this.collisionsToWin = this.beatmap.totalSegments;
+      return true;
+    } catch (e) {
+      console.error('Failed to load beatmap:', e);
+      return false;
+    }
+  }
+
+  setupAudio() {
+    if (this.audioElement) {
+      this.audioElement.pause();
+      this.audioElement = null;
+    }
+    this.audioElement = new Audio('./music/BetweenWorlds.mp3');
+    this.audioElement.loop = false;
+  }
+
+  async startLevel(levelId) {
     const level = LEVELS.find(l => l.id === levelId);
     if (!level) return;
+
+    // 第3关：加载beatmap
+    if (levelId === 3) {
+      const loaded = await this.loadBeatmap();
+      if (!loaded) {
+        console.error('Failed to load beatmap for level 3');
+        return;
+      }
+    }
 
     this.currentLevel = levelId;
     this.collisionCount = 0;
@@ -286,17 +321,25 @@ export class Game {
     this.comboCount = 0;
 
     // Reset ball
-    this.ball.position = new Vector3(0, BOUNCE_HEIGHT + SPHERE_RADIUS, 0);
     this.ballColor = new Color3(0.2, 0.6, 0.9);
     this.ballMaterial.diffuseColor = this.ballColor;
     this.ballMaterial.emissiveColor = this.ballColor.scale(0.2);
     this.ballMaterial.emissiveIntensity = 0;
     this.ball.visibility = 1;
-    this.ballVY = 0;
-    this.onGround = true;
-    this.justLandedSegment = null;
-    this.landingCooldown = 0;
-    this.ballLeftGround = true;
+    // 第3关特殊：球从高处落下
+    if (levelId === 3) {
+      this.ball.position = new Vector3(0, 8, 0); // 从y=8高处落下
+      this.ballVY = 0;
+      this.onGround = false;
+      this.ballLeftGround = true;
+    } else {
+      this.ball.position = new Vector3(0, BOUNCE_HEIGHT + SPHERE_RADIUS, 0);
+      this.ballVY = 0;
+      this.onGround = true;
+      this.justLandedSegment = null;
+      this.landingCooldown = 0;
+      this.ballLeftGround = true;
+    }
     this.currentSegmentIndex = 0;
     this.sharedVelocity = 0;
     this.gameState = 'playing';
@@ -321,6 +364,13 @@ export class Game {
     this.ui.comboDisplay.style.display = 'none';
     this.glowLayer.intensity = 0.8;
     this.lastTime = performance.now();
+
+    // 第3关：启动音乐从28秒开始
+    if (levelId === 3) {
+      this.setupAudio();
+      this.audioElement.currentTime = 28;
+      this.audioElement.play();
+    }
   }
 
   update() {
@@ -410,6 +460,13 @@ export class Game {
         this.landingCooldown = 0.5;
         this.handleLanding(segmentUnderBall, segmentUnderBallIndex, currentGravity);
       }
+
+      // 第3关：检查是否跳完所有轨道
+      if (this.currentLevel === 3 && this.collisionCount >= this.beatmap.totalSegments && !this.blackHoleActive) {
+        this.blackHoleActive = true;
+        this.blackHoleZ = -50;
+        this.createBlackHole();
+      }
     } else {
       this.justLandedSegment = null;
       // Ball is in the air: mark that it has left ground
@@ -433,6 +490,27 @@ export class Game {
         }
         const newZ = minZ - SEGMENT_LENGTH - 0.3;
         this.trackManager.recycleSegment(i, newZ);
+      }
+    }
+
+    // 第3关：距离计数器
+    if (this.currentLevel === 3 && this.beatmap) {
+      const totalSegments = this.beatmap.totalSegments;
+      const lastSegIndex = this.trackManager.segments.length - 1;
+      const lastSeg = this.trackManager.segments[lastSegIndex];
+
+      // 检查最后一个轨道是否已进入屏幕范围（Z > -5 且 Z < 15）
+      if (lastSeg && !this.isLastSegmentApproaching) {
+        if (lastSeg.mesh.position.z > -5 && lastSeg.mesh.position.z < 15) {
+          this.isLastSegmentApproaching = true;
+        }
+      }
+
+      if (this.isLastSegmentApproaching) {
+        // 显示剩余距离
+        const remaining = Math.max(0, lastSeg.mesh.position.z + 5);
+        this.ui.targetDistance.textContent = Math.round(remaining) + 'm';
+        this.ui.currentDistance.textContent = Math.round(this.sharedVelocity * this.currentTime) + 'm';
       }
     }
     }
@@ -655,6 +733,10 @@ export class Game {
     this.ui.nextLevelBtn.style.display = this.currentLevel < LEVELS.length ? 'block' : 'none';
     this.ui.comboDisplay.style.display = 'none';
     this.ui.victory.style.display = 'block';
+    if (this.audioElement) {
+      this.audioElement.pause();
+      this.audioElement = null;
+    }
   }
 
   unlockNextLevel() {
@@ -802,6 +884,10 @@ export class Game {
     this.ui.continueBtn.style.display = this.continueCount > 0 ? 'block' : 'none';
     this.ui.comboDisplay.style.display = 'none';
     setTimeout(() => { this.ui.gameOver.style.display = 'block'; }, this.shatterDuration * 1000);
+    if (this.audioElement) {
+      this.audioElement.pause();
+      this.audioElement = null;
+    }
   }
 
   continueGame() {
