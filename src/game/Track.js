@@ -359,29 +359,37 @@ export class TrackManager {
     this.pathColor    = null;
   }
 
-  initialize(levelConfig) {
+  initialize(levelConfig, beatmap = null) {
     this.clear();
     this.levelConfig    = levelConfig;
     this.availableTypes = levelConfig.trackTypes;
     this.pathColor      = null;
     this.blocksSinceLastStraight = 0;
+    this.beatmap = beatmap;
+    this.beatmapIndex = 0;
 
     const firstColor = this.randomColor();
     this.pathColor   = firstColor.color;
-    this.segments.push(this.createSegment('straight', 0, firstColor));
 
-    let currentZ = SEGMENT_LENGTH + this.segmentGap;
-    for (let i = 1; i < 25; i++) {
-      const type = this.selectNextSegmentType();
-      let segColor;
-      if (type === 'straight') {
-        segColor = this.randomColor();
-        this.pathColor = segColor.color;
-      } else {
-        segColor = { key: null, color: this.pathColor };
+    if (beatmap) {
+      // 音乐驱动模式：使用beatmap数据生成轨道
+      this.generateFromBeatmap(firstColor);
+    } else {
+      // 原有模式：固定数量轨道
+      this.segments.push(this.createSegment('straight', 0, firstColor));
+      let currentZ = SEGMENT_LENGTH + this.segmentGap;
+      for (let i = 1; i < 25; i++) {
+        const type = this.selectNextSegmentType();
+        let segColor;
+        if (type === 'straight') {
+          segColor = this.randomColor();
+          this.pathColor = segColor.color;
+        } else {
+          segColor = { key: null, color: this.pathColor };
+        }
+        this.segments.push(this.createSegment(type, -currentZ, segColor));
+        currentZ += SEGMENT_LENGTH + this.segmentGap;
       }
-      this.segments.push(this.createSegment(type, -currentZ, segColor));
-      currentZ += SEGMENT_LENGTH + this.segmentGap;
     }
   }
 
@@ -400,6 +408,31 @@ export class TrackManager {
     const others = available.filter(t => t !== 'speedBoost');
     if (others.length > 0) return others[Math.floor(Math.random() * others.length)];
     return available[0];
+  }
+
+  generateFromBeatmap(firstColor) {
+    const beatmap = this.beatmap;
+
+    // 第一个轨道
+    this.segments.push(this.createSegment('straight', 0, firstColor));
+
+    let currentZ = SEGMENT_LENGTH + this.segmentGap;
+
+    for (let i = 0; i < beatmap.segmentTypes.length; i++) {
+      const type = beatmap.segmentTypes[i];
+      const spacing = beatmap.spacing[i];
+
+      let segColor;
+      if (type === 'straight') {
+        segColor = this.randomColor();
+        this.pathColor = segColor.color;
+      } else {
+        segColor = { key: null, color: this.pathColor };
+      }
+
+      this.segments.push(this.createSegment(type, -currentZ, segColor));
+      currentZ += spacing;
+    }
   }
 
   createSegment(type, zPosition, color) {
@@ -430,18 +463,23 @@ export class TrackManager {
   recycleSegment(index, newZ) {
     this.segments[index].dispose();
 
-    const type = this.selectNextSegmentType();
-    let color;
-    if (type === 'straight') {
-      color = this.randomColor();
-      this.pathColor = color.color;
+    if (!this.beatmap) {
+      // 原有模式
+      const type = this.selectNextSegmentType();
+      let color;
+      if (type === 'straight') {
+        color = this.randomColor();
+        this.pathColor = color.color;
+      } else {
+        color = { key: null, color: this.pathColor };
+      }
+      const newSeg = this.createSegment(type, newZ, color);
+      this.segments[index] = newSeg;
+      return newSeg;
     } else {
-      color = { key: null, color: this.pathColor };
+      // 音乐驱动模式：不再回收，因为轨道数量固定
+      return null;
     }
-
-    const newSeg = this.createSegment(type, newZ, color);
-    this.segments[index] = newSeg;
-    return newSeg;
   }
 
   clear() {
