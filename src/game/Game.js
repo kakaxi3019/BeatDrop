@@ -147,6 +147,7 @@ export class Game {
     // Beatmap (Level 3)
     this.beatmap = null;
     this.audioElement = null;
+    this.savedAudioTime = 0;
     this.isLastSegmentApproaching = false;
 
     this.setupCamera();
@@ -885,8 +886,8 @@ export class Game {
     this.ui.comboDisplay.style.display = 'none';
     setTimeout(() => { this.ui.gameOver.style.display = 'block'; }, this.shatterDuration * 1000);
     if (this.audioElement) {
+      this.savedAudioTime = this.audioElement.currentTime;
       this.audioElement.pause();
-      this.audioElement = null;
     }
   }
 
@@ -929,6 +930,11 @@ export class Game {
         this.ui.countdownDisplay.style.display = 'none';
         this.gameState = 'playing';
         this.lastTime = performance.now();
+        // 继续时恢复音频
+        if (this.currentLevel === 3 && this.audioElement) {
+          this.audioElement.currentTime = this.savedAudioTime || 28;
+          this.audioElement.play();
+        }
       }
     }, 1000);
   }
