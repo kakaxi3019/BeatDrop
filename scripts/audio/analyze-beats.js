@@ -98,11 +98,11 @@ async function main() {
   const fileBuffer = fs.readFileSync(MUSIC_FILE);
   const audioBuffer = await audioDecode(fileBuffer);
 
-  console.log('Audio decoded. Duration:', audioBuffer.duration.toFixed(2), 's');
+  console.log('Audio decoded. Duration:', (audioBuffer.channelData[0].length / audioBuffer.sampleRate).toFixed(2), 's');
 
   // Get channel data and create mono mix
-  const leftChannel = audioBuffer.getChannelData(0);
-  const rightChannel = audioBuffer.getChannelData(1);
+  const leftChannel = audioBuffer.channelData[0];
+  const rightChannel = audioBuffer.channelData[1];
   const mono = new Float32Array(leftChannel.length);
   for (let i = 0; i < leftChannel.length; i++) {
     mono[i] = (leftChannel[i] + rightChannel[i]) / 2;
