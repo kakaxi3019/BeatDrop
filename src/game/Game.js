@@ -22,7 +22,8 @@ import { TrackManager, COLORS } from './Track.js';
 // Level configurations
 const LEVELS = [
   { id: 1, name: "Miller's Planet", nameCn: "第1关", trackTypes: ['straight', 'double'], jumpsToWin: 1 },
-  { id: 2, name: "Mann's World", nameCn: "第2关", trackTypes: ['straight', 'double', 'triple'], jumpsToWin: 10 }
+  { id: 2, name: "Mann's World", nameCn: "第2关", trackTypes: ['straight', 'double', 'triple'], jumpsToWin: 10 },
+  { id: 3, name: "Echoes of Earth", nameCn: "第3关", trackTypes: ['straight', 'double', 'triple'], jumpsToWin: 'dynamic' }
 ];
 
 // Physics constants
@@ -239,6 +240,7 @@ export class Game {
   getLevelDescription(level) {
     if (level.id === 1) return '训练关 · 直线 + 少量双色轨道 · 1跳';
     if (level.id === 2) return '训练关 · 直线 + 双色 + 三色轨道 · 10跳';
+    if (level.id === 3) return '音乐驱动 · 根据重音生成轨道';
     return '混合轨道';
   }
 
