@@ -1,0 +1,6 @@
+- generic [active] [ref=e1]:
+  - generic:
+    - generic: 363m
+    - generic: 目标：19m
+  - generic [ref=e3]: 第2关 Mann's World
+  - button "菜单" [ref=e4] [cursor=pointer]

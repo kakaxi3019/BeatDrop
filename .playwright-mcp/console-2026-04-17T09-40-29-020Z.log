@@ -1,0 +1,6 @@
+[     221ms] [LOG] BJS - [17:40:29]: Babylon.js v7.54.3 - WebGL2 @ http://localhost:3000/node_modules/.vite/deps/chunk-OJJXGLTO.js?v=cb7da367:44
+[    5403ms] [LOG] Ground collision {segmentUnderBall: straight, segmentUnderBallIndex: 0, ballLeftGround: true, landingCooldown: 0, seg0z: 0} @ http://localhost:3000/src/game/Game.js?t=1776418826600:532
+[    6082ms] [LOG] Ground collision {segmentUnderBall: null, segmentUnderBallIndex: -1, ballLeftGround: true, landingCooldown: -0.018399999991059235, seg0z: 3.9779650052266557} @ http://localhost:3000/src/game/Game.js?t=1776418826600:532
+[    6766ms] [LOG] Ground collision {segmentUnderBall: double, segmentUnderBallIndex: 1, ballLeftGround: true, landingCooldown: -0.018399999991059235, seg0z: 8.049374151664466} @ http://localhost:3000/src/game/Game.js?t=1776418826600:532
+[   77322ms] [LOG] BJS - [17:41:46]: Babylon.js v7.54.3 - WebGL2 @ http://localhost:3000/node_modules/.vite/deps/chunk-OJJXGLTO.js?v=cb7da367:44
+[   84026ms] [LOG] BJS - [17:41:53]: Babylon.js v7.54.3 - WebGL2 @ http://localhost:3000/node_modules/.vite/deps/chunk-OJJXGLTO.js?v=cb7da367:44

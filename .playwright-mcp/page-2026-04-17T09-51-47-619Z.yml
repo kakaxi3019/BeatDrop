@@ -1,0 +1,6 @@
+- generic [active] [ref=e1]:
+  - generic:
+    - generic: 4078m
+    - generic: 目标：104m
+  - generic [ref=e3]: 第5关 The Tesseract
+  - button "菜单" [ref=e4] [cursor=pointer]

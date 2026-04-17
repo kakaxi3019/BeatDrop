@@ -1,0 +1,9 @@
+- generic [active] [ref=e1]:
+  - generic:
+    - generic: GREAT
+    - generic: x19
+  - generic:
+    - generic: 380m
+    - generic: "???m"
+  - generic [ref=e3]: 第4关 Gargantua's Edge
+  - button "菜单" [ref=e4] [cursor=pointer]

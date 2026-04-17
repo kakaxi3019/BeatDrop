@@ -1,0 +1,97 @@
+[     806ms] [LOG] BJS - [16:54:33]: Babylon.js v7.54.3 - WebGL2 @ http://localhost:3000/node_modules/.vite/deps/chunk-OJJXGLTO.js?v=cb7da367:44
+[    1017ms] [WARNING] [.WebGL-0x2664000eee00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels @ http://localhost:3000/:0
+[    1056ms] [WARNING] [.WebGL-0x2664000eee00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels @ http://localhost:3000/:0
+[    1106ms] [WARNING] [.WebGL-0x2664000eee00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels @ http://localhost:3000/:0
+[    1318ms] [WARNING] [.WebGL-0x2664000eee00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels (this message will no longer repeat) @ http://localhost:3000/:0
+[    1753ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/favicon.ico:0
+[   44305ms] [LOG] [LAND] seg= 0 z= 0.0 vel= 0.0 @ http://localhost:3000/src/game/Game.js:558
+[   44307ms] [LOG] [VEL] currentSeg= 0 z= 0.0 bouncePeriod= 0.69 @ http://localhost:3000/src/game/Game.js:726
+[   44307ms] [LOG] [VEL] nextSeg= 1 dist= 8.3 newVel= 12.0 @ http://localhost:3000/src/game/Game.js:743
+[   45093ms] [LOG] [LAND] seg= 1 z= -4.4 vel= 12.0 @ http://localhost:3000/src/game/Game.js:558
+[   45093ms] [LOG] [VEL] currentSeg= 1 z= -4.4 bouncePeriod= 0.69 @ http://localhost:3000/src/game/Game.js:726
+[   45093ms] [LOG] [VEL] nextSeg= 2 dist= 12.7 newVel= 18.3 @ http://localhost:3000/src/game/Game.js:743
+[   45812ms] [LOG] [LAND] seg= 1 z= 1.6 vel= 18.3 @ http://localhost:3000/src/game/Game.js:558
+[   45812ms] [LOG] [VEL] currentSeg= 1 z= 1.6 bouncePeriod= 0.69 @ http://localhost:3000/src/game/Game.js:726
+[   45812ms] [LOG] [VEL] nextSeg= 2 dist= 6.7 newVel= 9.7 @ http://localhost:3000/src/game/Game.js:743
+[   46499ms] [LOG] [LAND] seg= 2 z= -3.6 vel= 9.7 @ http://localhost:3000/src/game/Game.js:558
+[   46499ms] [LOG] [VEL] currentSeg= 2 z= -3.6 bouncePeriod= 0.69 @ http://localhost:3000/src/game/Game.js:726
+[   46499ms] [LOG] [VEL] nextSeg= 3 dist= 11.9 newVel= 17.2 @ http://localhost:3000/src/game/Game.js:743
+[   47191ms] [LOG] [LAND] seg= 2 z= 1.9 vel= 17.2 @ http://localhost:3000/src/game/Game.js:558
+[   47191ms] [LOG] [VEL] currentSeg= 2 z= 1.9 bouncePeriod= 0.69 @ http://localhost:3000/src/game/Game.js:726
+[   47191ms] [LOG] [VEL] nextSeg= 3 dist= 6.4 newVel= 9.2 @ http://localhost:3000/src/game/Game.js:743
+[   47875ms] [LOG] [LAND] seg= 3 z= -3.4 vel= 9.2 @ http://localhost:3000/src/game/Game.js:558
+[   47876ms] [LOG] [VEL] currentSeg= 3 z= -3.4 bouncePeriod= 0.69 @ http://localhost:3000/src/game/Game.js:726
+[   47876ms] [LOG] [VEL] nextSeg= 4 dist= 11.7 newVel= 16.9 @ http://localhost:3000/src/game/Game.js:743
+[   48571ms] [LOG] [LAND] seg= 3 z= 2.1 vel= 16.9 @ http://localhost:3000/src/game/Game.js:558
+[   48571ms] [LOG] [VEL] currentSeg= 3 z= 2.1 bouncePeriod= 0.69 @ http://localhost:3000/src/game/Game.js:726
+[   48571ms] [LOG] [VEL] nextSeg= 4 dist= 6.2 newVel= 9.0 @ http://localhost:3000/src/game/Game.js:743
+[   49316ms] [LOG] [LAND] seg= 4 z= -3.3 vel= 9.0 @ http://localhost:3000/src/game/Game.js:558
+[   49317ms] [LOG] [VEL] currentSeg= 4 z= -3.3 bouncePeriod= 0.69 @ http://localhost:3000/src/game/Game.js:726
+[   49317ms] [LOG] [VEL] nextSeg= 5 dist= 11.6 newVel= 16.8 @ http://localhost:3000/src/game/Game.js:743
+[   50101ms] [LOG] [LAND] seg= 4 z= 2.1 vel= 16.8 @ http://localhost:3000/src/game/Game.js:558
+[   50101ms] [LOG] [VEL] currentSeg= 4 z= 2.1 bouncePeriod= 0.69 @ http://localhost:3000/src/game/Game.js:726
+[   50101ms] [LOG] [VEL] nextSeg= 5 dist= 6.2 newVel= 8.9 @ http://localhost:3000/src/game/Game.js:743
+[   50822ms] [LOG] [LAND] seg= 5 z= -3.3 vel= 8.9 @ http://localhost:3000/src/game/Game.js:558
+[   50822ms] [LOG] [VEL] currentSeg= 5 z= -3.3 bouncePeriod= 0.69 @ http://localhost:3000/src/game/Game.js:726
+[   50822ms] [LOG] [VEL] nextSeg= 6 dist= 11.6 newVel= 16.7 @ http://localhost:3000/src/game/Game.js:743
+[   51550ms] [LOG] [LAND] seg= 5 z= 2.1 vel= 16.7 @ http://localhost:3000/src/game/Game.js:558
+[   51550ms] [LOG] [VEL] currentSeg= 5 z= 2.1 bouncePeriod= 0.69 @ http://localhost:3000/src/game/Game.js:726
+[   51550ms] [LOG] [VEL] nextSeg= 6 dist= 6.2 newVel= 8.9 @ http://localhost:3000/src/game/Game.js:743
+[   52306ms] [LOG] [LAND] seg= 6 z= -3.3 vel= 8.9 @ http://localhost:3000/src/game/Game.js:558
+[   52306ms] [LOG] [VEL] currentSeg= 6 z= -3.3 bouncePeriod= 0.69 @ http://localhost:3000/src/game/Game.js:726
+[   52306ms] [LOG] [VEL] nextSeg= 7 dist= 11.6 newVel= 16.7 @ http://localhost:3000/src/game/Game.js:743
+[   53107ms] [LOG] [LAND] seg= 6 z= 2.2 vel= 16.7 @ http://localhost:3000/src/game/Game.js:558
+[   53107ms] [LOG] [VEL] currentSeg= 6 z= 2.2 bouncePeriod= 0.69 @ http://localhost:3000/src/game/Game.js:726
+[   53107ms] [LOG] [VEL] nextSeg= 7 dist= 6.1 newVel= 8.9 @ http://localhost:3000/src/game/Game.js:743
+[   53853ms] [LOG] [LAND] seg= 7 z= -3.3 vel= 8.9 @ http://localhost:3000/src/game/Game.js:558
+[   53853ms] [LOG] [VEL] currentSeg= 7 z= -3.3 bouncePeriod= 0.69 @ http://localhost:3000/src/game/Game.js:726
+[   53853ms] [LOG] [VEL] nextSeg= 8 dist= 11.6 newVel= 16.7 @ http://localhost:3000/src/game/Game.js:743
+[   54577ms] [LOG] [LAND] seg= 7 z= 2.1 vel= 16.7 @ http://localhost:3000/src/game/Game.js:558
+[   54578ms] [LOG] [VEL] currentSeg= 7 z= 2.1 bouncePeriod= 0.69 @ http://localhost:3000/src/game/Game.js:726
+[   54578ms] [LOG] [VEL] nextSeg= 8 dist= 6.2 newVel= 8.9 @ http://localhost:3000/src/game/Game.js:743
+[   55282ms] [LOG] [LAND] seg= 8 z= -3.3 vel= 8.9 @ http://localhost:3000/src/game/Game.js:558
+[   55282ms] [LOG] [VEL] currentSeg= 8 z= -3.3 bouncePeriod= 0.69 @ http://localhost:3000/src/game/Game.js:726
+[   55282ms] [LOG] [VEL] nextSeg= 9 dist= 11.6 newVel= 16.7 @ http://localhost:3000/src/game/Game.js:743
+[   56001ms] [LOG] [LAND] seg= 8 z= 2.2 vel= 16.7 @ http://localhost:3000/src/game/Game.js:558
+[   56001ms] [LOG] [VEL] currentSeg= 8 z= 2.2 bouncePeriod= 0.69 @ http://localhost:3000/src/game/Game.js:726
+[   56001ms] [LOG] [VEL] nextSeg= 9 dist= 6.1 newVel= 8.9 @ http://localhost:3000/src/game/Game.js:743
+[   56698ms] [LOG] [LAND] seg= 9 z= -3.3 vel= 8.9 @ http://localhost:3000/src/game/Game.js:558
+[   56698ms] [LOG] [VEL] currentSeg= 9 z= -3.3 bouncePeriod= 0.69 @ http://localhost:3000/src/game/Game.js:726
+[   56698ms] [LOG] [VEL] nextSeg= 10 dist= 11.6 newVel= 16.7 @ http://localhost:3000/src/game/Game.js:743
+[   57469ms] [LOG] [LAND] seg= 9 z= 2.2 vel= 16.7 @ http://localhost:3000/src/game/Game.js:558
+[   57469ms] [LOG] [VEL] currentSeg= 9 z= 2.2 bouncePeriod= 0.69 @ http://localhost:3000/src/game/Game.js:726
+[   57469ms] [LOG] [VEL] nextSeg= 10 dist= 6.1 newVel= 8.9 @ http://localhost:3000/src/game/Game.js:743
+[   58206ms] [LOG] [LAND] seg= 10 z= -3.3 vel= 8.9 @ http://localhost:3000/src/game/Game.js:558
+[   58207ms] [LOG] [VEL] currentSeg= 10 z= -3.3 bouncePeriod= 0.69 @ http://localhost:3000/src/game/Game.js:726
+[   58207ms] [LOG] [VEL] nextSeg= 11 dist= 11.6 newVel= 16.7 @ http://localhost:3000/src/game/Game.js:743
+[   58976ms] [LOG] [LAND] seg= 10 z= 2.2 vel= 16.7 @ http://localhost:3000/src/game/Game.js:558
+[   58976ms] [LOG] [VEL] currentSeg= 10 z= 2.2 bouncePeriod= 0.69 @ http://localhost:3000/src/game/Game.js:726
+[   58976ms] [LOG] [VEL] nextSeg= 11 dist= 6.1 newVel= 8.9 @ http://localhost:3000/src/game/Game.js:743
+[   59699ms] [LOG] [LAND] seg= 11 z= -3.3 vel= 8.9 @ http://localhost:3000/src/game/Game.js:558
+[   59699ms] [LOG] [VEL] currentSeg= 11 z= -3.3 bouncePeriod= 0.69 @ http://localhost:3000/src/game/Game.js:726
+[   59699ms] [LOG] [VEL] nextSeg= 12 dist= 11.6 newVel= 16.7 @ http://localhost:3000/src/game/Game.js:743
+[   60435ms] [LOG] [LAND] seg= 11 z= 2.2 vel= 16.7 @ http://localhost:3000/src/game/Game.js:558
+[   60435ms] [LOG] [VEL] currentSeg= 11 z= 2.2 bouncePeriod= 0.69 @ http://localhost:3000/src/game/Game.js:726
+[   60435ms] [LOG] [VEL] nextSeg= 12 dist= 6.1 newVel= 8.9 @ http://localhost:3000/src/game/Game.js:743
+[   61171ms] [LOG] [LAND] seg= 12 z= -3.3 vel= 8.9 @ http://localhost:3000/src/game/Game.js:558
+[   61171ms] [LOG] [VEL] currentSeg= 12 z= -3.3 bouncePeriod= 0.69 @ http://localhost:3000/src/game/Game.js:726
+[   61171ms] [LOG] [VEL] nextSeg= 13 dist= 11.6 newVel= 16.7 @ http://localhost:3000/src/game/Game.js:743
+[   61938ms] [LOG] [LAND] seg= 12 z= 2.2 vel= 16.7 @ http://localhost:3000/src/game/Game.js:558
+[   61938ms] [LOG] [VEL] currentSeg= 12 z= 2.2 bouncePeriod= 0.69 @ http://localhost:3000/src/game/Game.js:726
+[   61938ms] [LOG] [VEL] nextSeg= 13 dist= 6.1 newVel= 8.9 @ http://localhost:3000/src/game/Game.js:743
+[   88688ms] [LOG] BJS - [16:56:00]: Babylon.js v7.54.3 - WebGL2 @ http://localhost:3000/node_modules/.vite/deps/chunk-OJJXGLTO.js?v=cb7da367:44
+[  121841ms] [LOG] BJS - [16:56:34]: Babylon.js v7.54.3 - WebGL2 @ http://localhost:3000/node_modules/.vite/deps/chunk-OJJXGLTO.js?v=cb7da367:44
+[  138505ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:3000/@vite/client:559
+[  138565ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/:0
+[  139699ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/:0
+[  140795ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/:0
+[  141914ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/:0
+[  142975ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/:0
+[  144047ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/:0
+[  145173ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/:0
+[  146273ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/:0
+[  147428ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/:0
+[  148554ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/:0
+[  149703ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/:0
+[  150819ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/:0
+[  152624ms] [LOG] BJS - [16:57:04]: Babylon.js v7.54.3 - WebGL2 @ http://localhost:3000/node_modules/.vite/deps/chunk-OJJXGLTO.js?v=cb7da367:44

@@ -348,7 +348,7 @@ export class Game {
     this.clearAllEffects();
 
     // Init track
-    this.trackManager.initialize(level);
+    this.trackManager.initialize(level, levelId === 3 ? this.beatmap : null);
 
     // Velocity
     // Initialize sharedVelocity to 0 so the track doesn't move until the ball first lands

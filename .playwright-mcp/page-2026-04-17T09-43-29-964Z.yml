@@ -1,0 +1,12 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e33]:
+    - heading "Edmunds' Planet" [level=1] [ref=e63]
+    - paragraph [ref=e35]: 关卡完成!
+    - generic [ref=e36]:
+      - button "Next Level" [ref=e37] [cursor=pointer]
+      - button "Level Select" [ref=e38] [cursor=pointer]
+  - generic:
+    - generic: 581m
+    - generic: 目标：1m
+  - generic [ref=e3]: 第3关 Edmunds' Planet
+  - button "菜单" [ref=e4] [cursor=pointer]

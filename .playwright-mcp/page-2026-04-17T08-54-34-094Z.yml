@@ -1,0 +1,34 @@
+- generic [active] [ref=e1]:
+  - generic:
+    - generic: 0m
+    - generic: "???m"
+  - generic [ref=e3]: 第1关 Miller's Planet
+  - button "菜单" [ref=e4] [cursor=pointer]
+  - generic [ref=e5]:
+    - heading "星际穿越" [level=1] [ref=e6]
+    - paragraph [ref=e7]: Interstellar
+    - generic [ref=e8]:
+      - button "第1关 Miller's Planet 全直线轨道 · 1跳测试" [ref=e9] [cursor=pointer]:
+        - generic [ref=e10]: 第1关
+        - generic [ref=e11]: Miller's Planet
+        - generic [ref=e12]: 全直线轨道 · 1跳测试
+      - button "第2关 Mann's World 直线 + 双色块轨道 · 10跳通关" [ref=e13] [cursor=pointer]:
+        - generic [ref=e14]: 第2关
+        - generic [ref=e15]: Mann's World
+        - generic [ref=e16]: 直线 + 双色块轨道 · 10跳通关
+      - button "第3关 Edmunds' Planet 直线 + 双色 + 三色块轨道 · 20跳通关" [ref=e17] [cursor=pointer]:
+        - generic [ref=e18]: 第3关
+        - generic [ref=e19]: Edmunds' Planet
+        - generic [ref=e20]: 直线 + 双色 + 三色块轨道 · 20跳通关
+      - button "第4关 Gargantua's Edge 直线 + 双色 + 三色块轨道 · 100跳通关" [ref=e21] [cursor=pointer]:
+        - generic [ref=e22]: 第4关
+        - generic [ref=e23]: Gargantua's Edge
+        - generic [ref=e24]: 直线 + 双色 + 三色块轨道 · 100跳通关
+      - button "第5关 The Tesseract 终极混合轨道挑战 · 200跳通关" [ref=e25] [cursor=pointer]:
+        - generic [ref=e26]: 第5关
+        - generic [ref=e27]: The Tesseract
+        - generic [ref=e28]: 终极混合轨道挑战 · 200跳通关
+      - button "第6关 Between Worlds 节奏模式 · Between Worlds · 713拍" [ref=e29] [cursor=pointer]:
+        - generic [ref=e30]: 第6关
+        - generic [ref=e31]: Between Worlds
+        - generic [ref=e32]: 节奏模式 · Between Worlds · 713拍

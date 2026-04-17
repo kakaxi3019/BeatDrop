@@ -1,0 +1,14 @@
+[     101ms] [LOG] BJS - [18:19:10]: Babylon.js v7.54.3 - WebGL2 @ http://localhost:3000/node_modules/.vite/deps/chunk-OJJXGLTO.js?v=cb7da367:44
+[    6093ms] [LOG] LAND 0.480 vel 11.98 dt 0.000 @ http://localhost:3000/src/game/Game.js?t=1776421146233:546
+[    7473ms] [LOG] LAND -0.159 vel 11.29 dt 1.381 @ http://localhost:3000/src/game/Game.js?t=1776421146233:546
+[    8830ms] [LOG] LAND -0.149 vel 12.21 dt 1.357 @ http://localhost:3000/src/game/Game.js?t=1776421146233:546
+[   10195ms] [LOG] LAND -0.122 vel 12.19 dt 1.365 @ http://localhost:3000/src/game/Game.js?t=1776421146233:546
+[   11574ms] [LOG] LAND -0.037 vel 12.16 dt 1.379 @ http://localhost:3000/src/game/Game.js?t=1776421146233:546
+[   12939ms] [LOG] LAND -0.183 vel 12.03 dt 1.365 @ http://localhost:3000/src/game/Game.js?t=1776421146233:546
+[   14293ms] [LOG] LAND -0.151 vel 12.24 dt 1.354 @ http://localhost:3000/src/game/Game.js?t=1776421146233:546
+[   15655ms] [LOG] LAND -0.134 vel 12.20 dt 1.362 @ http://localhost:3000/src/game/Game.js?t=1776421146233:546
+[   17028ms] [LOG] LAND -0.081 vel 12.17 dt 1.373 @ http://localhost:3000/src/game/Game.js?t=1776421146233:546
+[   18390ms] [LOG] LAND -0.125 vel 12.10 dt 1.362 @ http://localhost:3000/src/game/Game.js?t=1776421146233:546
+[   19745ms] [LOG] LAND -0.231 vel 12.16 dt 1.355 @ http://localhost:3000/src/game/Game.js?t=1776421146233:546
+[   21104ms] [LOG] LAND -0.140 vel 12.31 dt 1.359 @ http://localhost:3000/src/game/Game.js?t=1776421146233:546
+[   99569ms] [LOG] BJS - [18:20:49]: Babylon.js v7.54.3 - WebGL2 @ http://localhost:3000/node_modules/.vite/deps/chunk-OJJXGLTO.js?v=cb7da367:44

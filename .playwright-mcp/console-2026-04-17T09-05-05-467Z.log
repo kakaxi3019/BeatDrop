@@ -1,0 +1,19 @@
+[     256ms] [LOG] BJS - [17:05:05]: Babylon.js v7.54.3 - WebGL2 @ http://localhost:3000/node_modules/.vite/deps/chunk-OJJXGLTO.js?v=cb7da367:44
+[  113067ms] [LOG] BJS - [17:06:58]: Babylon.js v7.54.3 - WebGL2 @ http://localhost:3000/node_modules/.vite/deps/chunk-OJJXGLTO.js?v=cb7da367:44
+[  125321ms] [LOG] BJS - [17:07:10]: Babylon.js v7.54.3 - WebGL2 @ http://localhost:3000/node_modules/.vite/deps/chunk-OJJXGLTO.js?v=cb7da367:44
+[  168534ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:3000/@vite/client:559
+[  168589ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/:0
+[  169651ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/:0
+[  170781ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/:0
+[  171952ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/:0
+[  173019ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/:0
+[  174153ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/:0
+[  175277ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/:0
+[  176419ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/:0
+[  177478ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/:0
+[  178580ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/:0
+[  179685ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/:0
+[  180802ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/:0
+[  181953ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/:0
+[  183071ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/:0
+[  184600ms] [LOG] BJS - [17:08:10]: Babylon.js v7.54.3 - WebGL2 @ http://localhost:3000/node_modules/.vite/deps/chunk-OJJXGLTO.js?v=cb7da367:44

@@ -1,0 +1,12 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e33]:
+    - heading "Game Over" [level=1] [ref=e34]
+    - paragraph [ref=e35]: 剩余继续次数：3
+    - generic [ref=e36]:
+      - button "返回选关" [ref=e37] [cursor=pointer]
+      - button "继续" [ref=e38] [cursor=pointer]
+  - generic:
+    - generic: 20m
+    - generic: "???m"
+  - generic [ref=e3]: 第2关 Mann's World
+  - button "菜单" [ref=e4] [cursor=pointer]
