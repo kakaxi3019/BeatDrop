@@ -3,11 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>3D Sphere Scene</title>
+  <title>BeatDrop - 星际穿越</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { overflow: hidden; background: #000; }
-    canvas { display: block; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #000; }
+    #renderCanvas { width: 100%; height: 100%; display: block; touch-action: none; }
+
+    /* Game Over Overlay */
     #gameOver {
       display: none;
       position: fixed;
@@ -20,22 +22,21 @@
       text-align: center;
       z-index: 1000;
     }
-    #gameOver h1 {
-      color: #fff;
-      font-size: 48px;
-      margin-bottom: 30px;
-    }
-    #restartBtn {
-      background: #ff68fd;
-      color: #fff;
+    #gameOver h1 { color: #fff; font-size: 48px; margin-bottom: 30px; }
+    .btn-group { display: flex; gap: 15px; justify-content: center; }
+    .btn {
       border: none;
       padding: 15px 40px;
       font-size: 20px;
       cursor: pointer;
+      color: #fff;
     }
-    #restartBtn:hover {
-      background: #ff85fe;
-    }
+    .btn-primary { background: #ff68fd; }
+    .btn-primary:hover { background: #ff85fe; }
+    .btn-secondary { background: #15befc; }
+    .btn-secondary:hover { background: #4dd4ff; }
+
+    /* Combo Display */
     #comboDisplay {
       display: none;
       position: fixed;
@@ -50,18 +51,32 @@
       font-size: 64px;
       font-weight: bold;
       color: #fff;
-      text-shadow: 0 0 10px var(--glow-color),
-                   0 0 20px var(--glow-color),
-                   0 0 40px var(--glow-color),
-                   0 0 80px var(--glow-color);
+      text-shadow: 0 0 10px var(--glow-color), 0 0 20px var(--glow-color),
+                   0 0 40px var(--glow-color), 0 0 80px var(--glow-color);
     }
     #comboCount {
       font-size: 48px;
       font-weight: bold;
       color: #fff;
-      text-shadow: 0 0 10px var(--glow-color),
-                   0 0 20px var(--glow-color);
+      text-shadow: 0 0 10px var(--glow-color), 0 0 20px var(--glow-color);
     }
+
+    /* Countdown Display */
+    #countdownDisplay {
+      display: none;
+      position: fixed;
+      top: 40%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 150px;
+      font-weight: bold;
+      color: #fff;
+      text-shadow: 0 0 20px #15befc, 0 0 40px #15befc;
+      z-index: 500;
+      pointer-events: none;
+    }
+
+    /* Victory Overlay */
     #victory {
       display: none;
       position: fixed;
@@ -74,22 +89,10 @@
       text-align: center;
       z-index: 1000;
     }
-    #victory h1 {
-      color: #fff;
-      font-size: 48px;
-      margin-bottom: 30px;
-    }
-    #victoryBtn {
-      background: #15befc;
-      color: #fff;
-      border: none;
-      padding: 15px 40px;
-      font-size: 20px;
-      cursor: pointer;
-    }
-    #victoryBtn:hover {
-      background: #4dd4ff;
-    }
+    #victory h1 { color: #fff; font-size: 48px; margin-bottom: 30px; }
+    #victorySubtitle { color: #888; margin-bottom: 20px; font-size: 18px; }
+
+    /* Distance Display */
     #distanceDisplay {
       position: fixed;
       top: 20px;
@@ -102,18 +105,42 @@
       font-size: 48px;
       font-weight: bold;
       color: #fff;
-      text-shadow: 0 0 10px #ff68fd,
-                   0 0 20px #ff68fd,
-                   0 0 40px #ff68fd;
+      text-shadow: 0 0 10px #ff68fd, 0 0 20px #ff68fd, 0 0 40px #ff68fd;
     }
     #targetDistance {
       font-size: 24px;
       color: #aaa;
-      text-shadow: 0 0 5px #15befc,
-                   0 0 10px #15befc;
+      text-shadow: 0 0 5px #15befc, 0 0 10px #15befc;
     }
+
+    /* Level Name */
+    #levelName {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      z-index: 100;
+    }
+    #levelName span { font-size: 24px; color: #fff; text-shadow: 0 0 10px #15befc; }
+    #levelName .level-title { font-size: 18px; color: #888; margin-left: 15px; }
+
+    /* Menu Button */
+    #menuBtn {
+      position: fixed;
+      top: 20px;
+      left: 280px;
+      background: rgba(30, 30, 40, 0.8);
+      border: 1px solid #444;
+      color: #fff;
+      padding: 8px 16px;
+      font-size: 16px;
+      cursor: pointer;
+      z-index: 100;
+    }
+    #menuBtn:hover { background: rgba(50, 50, 70, 0.9); border-color: #15befc; }
+
+    /* Level Select */
     #levelSelect {
-      display: flex;
+      display: none;
       flex-direction: column;
       align-items: center;
       justify-content: center;
@@ -153,27 +180,13 @@
       cursor: pointer;
       transition: all 0.3s ease;
       text-align: left;
+      color: #fff;
+      font-size: 18px;
     }
     .level-btn:hover {
       border-color: #15befc;
       background: rgba(30, 40, 60, 0.9);
       transform: translateX(10px);
-    }
-    .level-btn .level-num {
-      color: #ff68fd;
-      font-size: 20px;
-      font-weight: bold;
-      min-width: 70px;
-    }
-    .level-btn .level-name {
-      color: #fff;
-      font-size: 24px;
-      font-weight: bold;
-      min-width: 200px;
-    }
-    .level-btn .level-desc {
-      color: #888;
-      font-size: 16px;
     }
     .level-btn.locked {
       opacity: 0.5;
@@ -184,1399 +197,67 @@
       border-color: #333;
       background: rgba(20, 20, 30, 0.9);
     }
-    .level-btn .lock-icon {
-      display: none;
-      margin-left: 10px;
-    }
-    .level-btn.locked .lock-icon {
-      display: inline;
-    }
-    .level-btn.locked .level-name,
-    .level-btn.locked .level-desc {
-      color: #555;
-    }
-    #levelName {
-      position: fixed;
-      top: 20px;
-      left: 20px;
-      z-index: 100;
-    }
-    #levelName span {
-      font-size: 24px;
-      color: #fff;
-      text-shadow: 0 0 10px #15befc;
-    }
-    #levelName .level-title {
-      font-size: 18px;
-      color: #888;
-      margin-left: 15px;
-    }
-    #menuBtn {
-      position: fixed;
-      top: 20px;
-      left: 280px;
-      background: rgba(30, 30, 40, 0.8);
-      border: 1px solid #444;
-      color: #fff;
-      padding: 8px 16px;
-      font-size: 16px;
-      cursor: pointer;
-      z-index: 100;
-    }
-    #menuBtn:hover {
-      background: rgba(50, 50, 70, 0.9);
-      border-color: #15befc;
-    }
+    .level-btn .level-num { color: #ff68fd; font-weight: bold; min-width: 70px; }
+    .level-btn .level-name { font-weight: bold; min-width: 200px; }
+    .level-btn .level-desc { color: #888; }
+    .level-btn .lock-icon { display: none; margin-left: 10px; }
+    .level-btn.locked .lock-icon { display: inline; }
   </style>
 </head>
 <body>
+  <canvas id="renderCanvas"></canvas>
+
+  <!-- Game Over -->
   <div id="gameOver">
     <h1>Game Over</h1>
     <p id="continueCount" style="color:#888;margin-bottom:20px;">剩余继续次数：3</p>
-    <div style="display:flex;gap:15px;justify-content:center;">
-      <button id="restartBtn" style="background:#ff68fd;color:#fff;border:none;padding:15px 40px;font-size:20px;cursor:pointer;">返回选关</button>
-      <button id="continueBtn" style="background:#15befc;color:#fff;border:none;padding:15px 40px;font-size:20px;cursor:pointer;">继续</button>
+    <div class="btn-group">
+      <button id="restartBtn" class="btn btn-primary">返回选关</button>
+      <button id="continueBtn" class="btn btn-secondary">继续</button>
     </div>
   </div>
+
+  <!-- Combo Display -->
   <div id="comboDisplay">
     <div id="comboText">PERFECT</div>
     <div id="comboCount">x1</div>
   </div>
+
+  <!-- Countdown -->
+  <div id="countdownDisplay">3</div>
+
+  <!-- Victory -->
   <div id="victory">
     <h1 id="victoryTitle">Victory!</h1>
-    <p id="victorySubtitle" style="color:#888;margin-bottom:20px;">完成关卡</p>
-    <div style="display:flex;gap:15px;justify-content:center;">
-      <button id="nextLevelBtn" style="background:#15befc;color:#fff;border:none;padding:15px 40px;font-size:20px;cursor:pointer;">Next Level</button>
-      <button id="victoryBtn" style="background:#ff68fd;color:#fff;border:none;padding:15px 40px;font-size:20px;cursor:pointer;">Level Select</button>
+    <p id="victorySubtitle">关卡完成!</p>
+    <div class="btn-group">
+      <button id="nextLevelBtn" class="btn btn-secondary">Next Level</button>
+      <button id="victoryBtn" class="btn btn-primary">Level Select</button>
     </div>
   </div>
+
+  <!-- Distance Display -->
   <div id="distanceDisplay">
     <div id="currentDistance">0m</div>
     <div id="targetDistance">???m</div>
   </div>
+
+  <!-- Level Name -->
   <div id="levelName">
     <span id="levelNum">第1关</span>
     <span class="level-title" id="levelTitle">Miller's Planet</span>
   </div>
+
+  <!-- Menu Button -->
   <button id="menuBtn">菜单</button>
+
+  <!-- Level Select -->
   <div id="levelSelect">
     <h1>星际穿越</h1>
     <p class="subtitle">Interstellar</p>
-    <div class="level-list">
-      <button class="level-btn" data-level="1">
-        <span class="level-num">第1关</span>
-        <span class="level-name">Miller's Planet</span>
-        <span class="level-desc">全部直线轨道</span>
-        <span class="lock-icon">🔒</span>
-      </button>
-      <button class="level-btn locked" data-level="2">
-        <span class="level-num">第2关</span>
-        <span class="level-name">Mann's World</span>
-        <span class="level-desc">直线 + 双色块 + 加速轨道</span>
-        <span class="lock-icon">🔒</span>
-      </button>
-      <button class="level-btn locked" data-level="3">
-        <span class="level-num">第3关</span>
-        <span class="level-name">Edmunds' Planet</span>
-        <span class="level-desc">直线 + 双色块 + 三色块 + 加速轨道</span>
-        <span class="lock-icon">🔒</span>
-      </button>
-      <button class="level-btn locked" data-level="4">
-        <span class="level-num">第4关</span>
-        <span class="level-name">Gargantua's Edge</span>
-        <span class="level-desc">混合轨道 · 200跳通关</span>
-        <span class="lock-icon">🔒</span>
-      </button>
-      <button class="level-btn locked" data-level="5">
-        <span class="level-num">第5关</span>
-        <span class="level-name">The Tesseract</span>
-        <span class="level-desc">混合轨道 · 1000跳通关</span>
-        <span class="lock-icon">🔒</span>
-      </button>
-    </div>
+    <div class="level-list" id="levelList"></div>
   </div>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <script>
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(window.devicePixelRatio);
-    document.body.appendChild(renderer.domElement);
 
-    // Colors: pink=0xff68fd, yellow=0xffe528, blue=0x15befc
-    const COLORS = {
-      pink: 0xff68fd,
-      yellow: 0xffe528,
-      blue: 0x15befc
-    };
-    const COLOR_KEYS = ['pink', 'yellow', 'blue'];
-
-    // Level definitions (Interstellar themed)
-    const LEVELS = [
-      {
-        id: 1,
-        name: "Miller's Planet",
-        nameCn: "第1关",
-        trackTypes: ['straight'],
-        jumpsToWin: 1
-      },
-      {
-        id: 2,
-        name: "Mann's World",
-        nameCn: "第2关",
-        trackTypes: ['straight', 'double', 'speedBoost'],
-        jumpsToWin: 10
-      },
-      {
-        id: 3,
-        name: "Edmunds' Planet",
-        nameCn: "第3关",
-        trackTypes: ['straight', 'double', 'triple', 'speedBoost'],
-        jumpsToWin: 20
-      },
-      {
-        id: 4,
-        name: "Gargantua's Edge",
-        nameCn: "第4关",
-        trackTypes: ['straight', 'double', 'triple', 'speedBoost'],
-        jumpsToWin: 200
-      },
-      {
-        id: 5,
-        name: "The Tesseract",
-        nameCn: "第5关",
-        trackTypes: ['straight', 'double', 'triple', 'speedBoost'],
-        jumpsToWin: 1000
-      }
-    ];
-
-    let currentLevel = 1;
-    let unlockedLevels = [1]; // Start with only level 1 unlocked
-    let continueCount = 3; // Continue attempts per game
-
-    // Sphere
-    const sphereGeo = new THREE.SphereGeometry(0.9, 64, 64);
-    const sphereMat = new THREE.MeshPhysicalMaterial({
-      color: 0x3498db,
-      metalness: 0.1,
-      roughness: 0.2,
-      transmission: 0.6,
-      thickness: 1.5,
-      emissive: 0x000000,
-      emissiveIntensity: 0,
-    });
-    const sphere = new THREE.Mesh(sphereGeo, sphereMat);
-    scene.add(sphere);
-
-    // Track segments
-    let segments = [];
-    const segmentLengths = { straight: 8, triple: 8, double: 8, speedBoost: 8 };
-
-    function randomColor() {
-      return COLORS[COLOR_KEYS[Math.floor(Math.random() * COLOR_KEYS.length)]];
-    }
-
-    function createStraightSegment(z, color) {
-      const group = new THREE.Group();
-      group.userData.type = 'straight';
-      const mat = new THREE.MeshStandardMaterial({ color: color, emissive: color, emissiveIntensity: 0.5 });
-      const mesh = new THREE.Mesh(new THREE.BoxGeometry(6, 0.15, 1.5), mat);
-      mesh.position.y = -0.45;
-      group.add(mesh);
-      group.position.z = z;
-      group.userData.length = 8;
-      group.userData.color = color;
-      group.userData.mesh = mesh;
-      scene.add(group);
-      return group;
-    }
-
-    function createTripleSegment(z, requiredColor) {
-      const group = new THREE.Group();
-      group.userData.type = 'triple';
-      // Triple: 3 blocks centered around X=0
-      // Block width 2.0, spacing 2.2, so: block0 at -2.2, block1 at 0, block2 at 2.2
-      const colors = [COLORS.pink, COLORS.yellow, COLORS.blue];
-      // Shuffle positions
-      for (let i = colors.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [colors[i], colors[j]] = [colors[j], colors[i]];
-      }
-      for (let i = 0; i < 3; i++) {
-        const mat = new THREE.MeshStandardMaterial({ color: colors[i], emissive: colors[i], emissiveIntensity: 0.5 });
-        const mesh = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.15, 1.5), mat);
-        mesh.position.set(-2.2 + i * 2.2, -0.45, 0);
-        mesh.userData.originalY = -0.45;
-        mesh.userData.pressed = false;
-        group.add(mesh);
-      }
-      group.position.z = z;
-      group.userData.length = 8;
-      scene.add(group);
-      return group;
-    }
-
-    function createDoubleSegment(z, requiredColor) {
-      const group = new THREE.Group();
-      group.userData.type = 'double';
-      // Double: 2 blocks centered around X=0
-      // Block width 2.0, spacing 2.5, so: block0 at -1.25, block1 at 1.25
-      const otherColors = COLOR_KEYS.filter(k => COLORS[k] !== requiredColor);
-      const otherColor = COLORS[otherColors[Math.floor(Math.random() * otherColors.length)]];
-      const colors = [requiredColor, otherColor];
-      // Shuffle positions
-      if (Math.random() > 0.5) [colors[0], colors[1]] = [colors[1], colors[0]];
-      for (let i = 0; i < 2; i++) {
-        const mat = new THREE.MeshStandardMaterial({ color: colors[i], emissive: colors[i], emissiveIntensity: 0.5 });
-        const mesh = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.15, 1.5), mat);
-        mesh.position.set(-1.25 + i * 2.5, -0.45, 0);
-        mesh.userData.originalY = -0.45;
-        mesh.userData.pressed = false;
-        group.add(mesh);
-      }
-      group.position.z = z;
-      group.userData.length = 8;
-      scene.add(group);
-      return group;
-    }
-
-    function createSpeedBoostSegment(z) {
-      const group = new THREE.Group();
-      group.userData.type = 'speedBoost';
-      const mat = new THREE.MeshStandardMaterial({
-        color: 0xffffff,
-        emissive: 0xffffff,
-        emissiveIntensity: 0.8
-      });
-      const mesh = new THREE.Mesh(new THREE.BoxGeometry(6, 0.15, 1.5), mat);
-      mesh.position.y = -0.45;
-      group.add(mesh);
-      group.position.z = z;
-      group.userData.length = 8;
-      group.userData.mesh = mesh;
-      scene.add(group);
-      return group;
-    }
-
-    function createSegment(type, z, requiredColor) {
-      if (type === 'straight') return createStraightSegment(z, requiredColor);
-      if (type === 'triple') return createTripleSegment(z, requiredColor);
-      if (type === 'double') return createDoubleSegment(z, requiredColor);
-      if (type === 'speedBoost') return createSpeedBoostSegment(z);
-    }
-
-    // Physics constants
-    const GRAVITY = 25;
-    const bounceHeight = 1.5;
-    const groundY = 0;
-    const sphereRadius = 0.9;
-
-    // Segment type constants
-    const SEGMENT_TYPES = {
-      STRAIGHT: 'straight',
-      TRIPLE: 'triple',
-      DOUBLE: 'double',
-      SPEED_BOOST: 'speedBoost'
-    };
-
-    let pathColor = 0x3498db;
-
-    // Initialize segments
-    function initSegments() {
-      const level = LEVELS[currentLevel - 1];
-      const availableTypes = level.trackTypes;
-
-      segments = [];
-      const firstColor = randomColor();
-      const firstStraight = createStraightSegment(0, firstColor);
-      segments.push(firstStraight);
-      pathColor = firstColor;
-
-      let currentZ = firstStraight.userData.length;
-      for (let i = 1; i < 25; i++) {
-        let type;
-        if (i % 4 === 0) {
-          type = 'straight';
-        } else {
-          // Use types available in current level (exclude 'straight' for non-periodic segments)
-          const nonStraightTypes = availableTypes.filter(t => t !== 'straight');
-          if (nonStraightTypes.length > 0) {
-            // Give speedBoost lower probability (1/4 chance when available)
-            if (nonStraightTypes.includes('speedBoost') && Math.random() < 0.2) {
-              type = 'speedBoost';
-            } else {
-              const typesWithoutSpeed = nonStraightTypes.filter(t => t !== 'speedBoost');
-              if (typesWithoutSpeed.length > 0) {
-                type = typesWithoutSpeed[Math.floor(Math.random() * typesWithoutSpeed.length)];
-              } else {
-                type = nonStraightTypes[0];
-              }
-            }
-          } else {
-            type = 'straight';
-          }
-        }
-        let segColor = pathColor;
-        if (type === 'straight') {
-          segColor = randomColor();
-          pathColor = segColor;
-        }
-        const seg = createSegment(type, -currentZ, segColor);
-        segments.push(seg);
-        currentZ += seg.userData.length;
-      }
-    }
-    initSegments();
-
-    let sphereVY = 0;
-    let onGround = true;
-    let currentSegmentIndex = 0;
-    let sharedVelocity = 0;
-    let ballColor = 0x3498db;
-    let gameOver = false;
-    let gamePaused = false; // Pause state for level select
-    let shatterParticles = [];
-    let shatterTime = 0;
-    const shatterDuration = 1;
-
-    // Utility: dispose Three.js object
-    function disposeObject(obj) {
-      if (obj.geometry) obj.geometry.dispose();
-      if (obj.material) obj.material.dispose();
-    }
-
-    // Utility: cleanup array of objects
-    function cleanupArray(arr, scene, useTraverse = false) {
-      arr.forEach(obj => {
-        scene.remove(obj);
-        if (useTraverse) {
-          obj.traverse(disposeObject);
-        } else {
-          disposeObject(obj);
-        }
-      });
-      arr.length = 0;
-    }
-
-    // Check if player reached win condition
-    function checkWinCondition() {
-      if (collisionCount >= collisionsToWin && !blackHoleActive) {
-        blackHoleActive = true;
-        blackHoleZ = -30;
-        createBlackHole(blackHoleZ);
-      }
-    }
-
-    // Speed boost state
-    let speedBoostActive = false;
-    let speedBoostTimer = 0;
-    const speedBoostDuration = 10; // 10 seconds
-    const speedBoostVelocityMultiplier = 1.63; // m=2/√1.5≈1.63: ensures center landing with k=1.5
-    const speedBoostGravityMultiplier = 1.5; // 1.5x gravity: gentler boost, ~1.22x effective speed
-
-    // Speed boost particles
-    const speedBoostParticles = [];
-    const speedBoostParticleCount = 30;
-
-    // Combo display
-    let comboCount = 0;
-    let comboTimeout = null;
-    const comboDisplay = document.getElementById('comboDisplay');
-    const comboText = document.getElementById('comboText');
-    const comboCountEl = document.getElementById('comboCount');
-
-    function showCombo() {
-      comboCount++;
-      // 80% PERFECT, 20% GREAT
-      const text = Math.random() < 0.8 ? 'PERFECT' : 'GREAT';
-      comboText.textContent = text;
-      comboCountEl.textContent = 'x' + comboCount;
-      // Update glow color based on ball color
-      const colorHex = '#' + ballColor.toString(16).padStart(6, '0');
-      comboDisplay.style.setProperty('--glow-color', colorHex);
-      comboDisplay.style.display = 'block';
-      // Clear existing timeout
-      if (comboTimeout) clearTimeout(comboTimeout);
-      // Hide after 0.8 seconds
-      comboTimeout = setTimeout(() => {
-        comboDisplay.style.display = 'none';
-      }, 800);
-    }
-
-    // Win condition - collision counter
-    let collisionCount = 0;
-    let collisionsToWin = 20;
-    let currentDistance = 0;
-    let targetDistance = 100; // Target distance in meters
-    const distanceDisplay = document.getElementById('currentDistance');
-    const targetDistanceEl = document.getElementById('targetDistance');
-    let blackHole = null;
-    let blackHoleActive = false;
-    let blackHoleZ = -100;
-
-    // Victory event listener
-    document.getElementById('victoryBtn').addEventListener('click', () => {
-      document.getElementById('victory').style.display = 'none';
-      gamePaused = true;
-      document.getElementById('levelSelect').style.display = 'flex';
-    });
-
-    // Next level button
-    document.getElementById('nextLevelBtn').addEventListener('click', () => {
-      document.getElementById('victory').style.display = 'none';
-      if (currentLevel < LEVELS.length) {
-        currentLevel++;
-        startLevel();
-      } else {
-        gamePaused = true;
-        document.getElementById('levelSelect').style.display = 'flex';
-      }
-    });
-
-    // Level selection buttons
-    document.querySelectorAll('.level-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const level = parseInt(btn.dataset.level);
-        if (!unlockedLevels.includes(level)) return;
-        currentLevel = level;
-        document.getElementById('levelSelect').style.display = 'none';
-        startLevel();
-      });
-    });
-
-    function updateLevelButtons() {
-      document.querySelectorAll('.level-btn').forEach(btn => {
-        const level = parseInt(btn.dataset.level);
-        if (unlockedLevels.includes(level)) {
-          btn.classList.remove('locked');
-        } else {
-          btn.classList.add('locked');
-        }
-      });
-    }
-
-    function unlockNextLevel() {
-      const nextLevel = currentLevel + 1;
-      if (nextLevel <= LEVELS.length && !unlockedLevels.includes(nextLevel)) {
-        unlockedLevels.push(nextLevel);
-        updateLevelButtons();
-      }
-    }
-
-    // Menu button - show level select
-    document.getElementById('menuBtn').addEventListener('click', () => {
-      gamePaused = true;
-      document.getElementById('levelSelect').style.display = 'flex';
-    });
-
-    function startLevel() {
-      const level = LEVELS[currentLevel - 1];
-      collisionsToWin = level.jumpsToWin;
-      targetDistance = collisionsToWin * 20;
-      continueCount = 3;
-
-      document.getElementById('levelNum').textContent = level.nameCn;
-      document.getElementById('levelTitle').textContent = level.name;
-
-      updateLevelButtons();
-
-      sphere.visible = true;
-      sphere.position.set(0, bounceHeight + sphereRadius, 0);
-      sphereMat.color.setHex(0x3498db);
-      sphereMat.emissive.setHex(0x000000);
-      sphereMat.emissiveIntensity = 0;
-      ballColor = 0x3498db;
-
-      segments.forEach(seg => {
-        seg.traverse(child => {
-          if (child.geometry) child.geometry.dispose();
-          if (child.material) child.material.dispose();
-        });
-        scene.remove(seg);
-      });
-
-      // Clean up ripples
-      ripples.forEach(r => {
-        if (r.parent) r.parent.remove(r);
-        r.geometry.dispose();
-        r.material.dispose();
-      });
-      ripples.length = 0;
-
-      // Clean up black hole
-      if (blackHole) {
-        scene.remove(blackHole);
-        blackHole.geometry.dispose();
-        blackHole.material.dispose();
-        blackHole = null;
-      }
-
-      initSegments();
-      
-      sphereVY = 0;
-      onGround = true;
-      currentSegmentIndex = 0;
-      sharedVelocity = 0;
-      gameOver = false;
-      mouseX = 0;
-      comboCount = 0;
-      comboDisplay.style.display = 'none';
-      if (comboTimeout) clearTimeout(comboTimeout);
-      collisionCount = 0;
-      blackHoleActive = false;
-      currentDistance = 0;
-      distanceDisplay.textContent = '0m';
-      targetDistanceEl.textContent = '???m';
-      speedBoostActive = false;
-      speedBoostTimer = 0;
-      clearSpeedBoostParticles();
-      gamePaused = false;
-    }
-
-    function createBlackHole(z) {
-      const geometry = new THREE.SphereGeometry(2.5, 64, 64);
-      const material = new THREE.ShaderMaterial({
-        uniforms: {
-          uTime: { value: 0 },
-          uColor1: { value: new THREE.Color(0x000000) },
-          uColor2: { value: new THREE.Color(0x4a0080) },
-          uColor3: { value: new THREE.Color(0xff6b00) }
-        },
-        vertexShader: `
-          varying vec2 vUv;
-          varying vec3 vPosition;
-          void main() {
-            vUv = uv;
-            vPosition = position;
-            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-          }
-        `,
-        fragmentShader: `
-          uniform float uTime;
-          uniform vec3 uColor1;
-          uniform vec3 uColor2;
-          uniform vec3 uColor3;
-          varying vec2 vUv;
-          varying vec3 vPosition;
-          
-          void main() {
-            vec2 center = vUv - 0.5;
-            float dist = length(center);
-            float angle = atan(center.y, center.x);
-            
-            // Rotating spiral pattern
-            float spiral = sin(angle * 12.0 - dist * 30.0 + uTime * 3.0) * 0.5 + 0.5;
-            
-            // Accretion disk rings
-            float rings = sin(dist * 40.0 - uTime * 5.0) * 0.5 + 0.5;
-            
-            // Combine patterns
-            float pattern = mix(spiral, rings, 0.5);
-            
-            // Color gradient from center to edge
-            vec3 color = mix(uColor1, uColor2, dist * 2.0);
-            color = mix(color, uColor3, pattern * smoothstep(0.3, 0.6, dist));
-            
-            // Darker center (event horizon)
-            float centerDark = smoothstep(0.25, 0.0, dist);
-            color = mix(color, vec3(0.0), centerDark);
-            
-            // Edge glow
-            float edgeGlow = smoothstep(0.5, 0.48, dist) * smoothstep(0.45, 0.48, dist);
-            color += uColor3 * edgeGlow * 2.0;
-            
-            // Pulsing effect
-            float pulse = sin(uTime * 2.0) * 0.1 + 0.9;
-            color *= pulse;
-            
-            gl_FragColor = vec4(color, 1.0);
-          }
-        `,
-        side: THREE.DoubleSide
-      });
-      blackHole = new THREE.Mesh(geometry, material);
-      blackHole.position.set(0, 2, z);
-      blackHole.userData.isBlackHole = true;
-      scene.add(blackHole);
-
-      // Add multiple glowing rings
-      for (let i = 0; i < 3; i++) {
-        const glowGeo = new THREE.RingGeometry(2.8 + i * 0.5, 3.2 + i * 0.5, 64);
-        const glowMat = new THREE.MeshBasicMaterial({
-          color: i === 0 ? 0xff6b00 : (i === 1 ? 0xaa00ff : 0x4a0080),
-          transparent: true,
-          opacity: 0.4 - i * 0.1,
-          side: THREE.DoubleSide
-        });
-        const glow = new THREE.Mesh(glowGeo, glowMat);
-        glow.position.z = 0.01 + i * 0.02;
-        glow.userData.rotationSpeed = 0.5 + i * 0.3;
-        glow.userData.isRing = true;
-        blackHole.add(glow);
-      }
-
-      // Add particle field around black hole
-      const particleGeo = new THREE.BufferGeometry();
-      const particleCount = 200;
-      const positions = new Float32Array(particleCount * 3);
-      for (let i = 0; i < particleCount; i++) {
-        const angle = Math.random() * Math.PI * 2;
-        const radius = 3 + Math.random() * 4;
-        positions[i * 3] = Math.cos(angle) * radius;
-        positions[i * 3 + 1] = (Math.random() - 0.5) * 2;
-        positions[i * 3 + 2] = Math.sin(angle) * radius;
-      }
-      particleGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-      const particleMat = new THREE.PointsMaterial({
-        color: 0xff6b00,
-        size: 0.1,
-        transparent: true,
-        opacity: 0.8,
-        blending: THREE.AdditiveBlending
-      });
-      const particles = new THREE.Points(particleGeo, particleMat);
-      particles.userData.isParticles = true;
-      blackHole.add(particles);
-    }
-
-    function triggerVictory() {
-      gameOver = true;
-      sphere.visible = false;
-      if (blackHole) {
-        scene.remove(blackHole);
-        blackHole.geometry.dispose();
-        blackHole.material.dispose();
-        blackHole = null;
-      }
-      comboDisplay.style.display = 'none';
-
-      // Unlock next level
-      unlockNextLevel();
-
-      // Update victory screen
-      const level = LEVELS[currentLevel - 1];
-      document.getElementById('victoryTitle').textContent = level.name;
-      document.getElementById('victorySubtitle').textContent = currentLevel < LEVELS.length ? '关卡完成!' : '恭喜通关全部关卡!';
-      document.getElementById('nextLevelBtn').style.display = currentLevel < LEVELS.length ? 'block' : 'none';
-
-      document.getElementById('victory').style.display = 'block';
-    }
-	
-    // Enhanced ripple effect with track deformation
-    const ripples = [];
-
-    function createRipple(parentObject, localX, localZ, color) {
-      // Create expanding ripple rings with feathered edges
-      const ringCount = 5;
-      
-      for (let ring = 0; ring < ringCount; ring++) {
-        const ringGeo = new THREE.RingGeometry(0.1, 0.2, 32);
-        const ringMat = new THREE.MeshBasicMaterial({
-          color: color,
-          transparent: true,
-          opacity: 0,
-          side: THREE.DoubleSide,
-          blending: THREE.AdditiveBlending
-        });
-        const ringMesh = new THREE.Mesh(ringGeo, ringMat);
-        
-        ringMesh.position.set(localX, 0.08, localZ);
-        ringMesh.rotation.x = -Math.PI / 2;
-        
-        ringMesh.userData.isRippleRing = true;
-        ringMesh.userData.age = 0;
-        ringMesh.userData.delay = ring * 0.08;
-        ringMesh.userData.maxRadius = 4 + ring * 0.5;
-        ringMesh.userData.speed = 3.5;
-        ringMesh.userData.life = 1;
-        ringMesh.userData.ring = ring;
-        
-        parentObject.add(ringMesh);
-        if (!parentObject.userData.ripples) parentObject.userData.ripples = [];
-        parentObject.userData.ripples.push(ringMesh);
-        ripples.push(ringMesh);
-      }
-
-      // Add particle spray effect
-      const sprayCount = 20;
-      for (let i = 0; i < sprayCount; i++) {
-        const geo = new THREE.SphereGeometry(0.05, 8, 8);
-        const mat = new THREE.MeshBasicMaterial({
-          color: color,
-          transparent: true,
-          opacity: 1
-        });
-        const p = new THREE.Mesh(geo, mat);
-        
-        p.position.set(localX, 0.08, localZ);
-        const angle = (i / sprayCount) * Math.PI * 2;
-        const speed = 1.5 + Math.random() * 1.0;
-        
-        p.userData.vx = Math.cos(angle) * speed;
-        p.userData.vz = Math.sin(angle) * speed;
-        p.userData.vy = 0.3 + Math.random() * 0.4;
-        p.userData.life = 1;
-        p.userData.decay = 1.2;
-        p.userData.age = 0;
-        p.userData.isSpray = true;
-        
-        parentObject.add(p);
-        if (!parentObject.userData.ripples) parentObject.userData.ripples = [];
-        parentObject.userData.ripples.push(p);
-        ripples.push(p);
-      }
-
-      // Add glow flash at impact point
-      const glowGeo = new THREE.CircleGeometry(0.5, 32);
-      const glowMat = new THREE.MeshBasicMaterial({
-        color: 0xffffff,
-        transparent: true,
-        opacity: 1,
-        blending: THREE.AdditiveBlending
-      });
-      const glow = new THREE.Mesh(glowGeo, glowMat);
-      glow.position.set(localX, 0.1, localZ);
-      glow.rotation.x = -Math.PI / 2;
-      glow.userData.isGlow = true;
-      glow.userData.age = 0;
-      glow.userData.life = 1;
-      
-      parentObject.add(glow);
-      if (!parentObject.userData.ripples) parentObject.userData.ripples = [];
-      parentObject.userData.ripples.push(glow);
-      ripples.push(glow);
-    }
-
-
-    // Speed boost particles
-    function createSpeedBoostParticles() {
-      // Clear existing particles
-      cleanupArray(speedBoostParticles, scene);
-
-      for (let i = 0; i < speedBoostParticleCount; i++) {
-        const geometry = new THREE.SphereGeometry(0.1, 8, 8);
-        const material = new THREE.MeshBasicMaterial({
-          color: 0xffffff,
-          transparent: true,
-          opacity: 0.8
-        });
-        const particle = new THREE.Mesh(geometry, material);
-        // Random position around ball
-        particle.position.set(
-          sphere.position.x + (Math.random() - 0.5) * 3,
-          sphere.position.y + (Math.random() - 0.5) * 2,
-          sphere.position.z + (Math.random() - 0.5) * 3
-        );
-        particle.userData.offset = Math.random() * Math.PI * 2;
-        particle.userData.speed = 0.5 + Math.random() * 1.5;
-        particle.userData.radius = 1 + Math.random() * 1.5;
-        particle.userData.verticalSpeed = (Math.random() - 0.5) * 0.5;
-        scene.add(particle);
-        speedBoostParticles.push(particle);
-      }
-    }
-
-    function updateSpeedBoostParticles(time) {
-      for (const particle of speedBoostParticles) {
-        const offset = particle.userData.offset;
-        const speed = particle.userData.speed;
-        const radius = particle.userData.radius;
-        const verticalSpeed = particle.userData.verticalSpeed;
-
-        // Orbit around ball
-        const angle = time * speed + offset;
-        particle.position.x = sphere.position.x + Math.cos(angle) * radius;
-        particle.position.y = sphere.position.y + Math.sin(time * 2 + offset) * 0.5 + verticalSpeed * time;
-        particle.position.z = sphere.position.z + Math.sin(angle) * radius;
-
-        // Pulse opacity
-        particle.material.opacity = 0.4 + Math.sin(time * 5 + offset) * 0.3;
-      }
-    }
-
-    function clearSpeedBoostParticles() {
-      cleanupArray(speedBoostParticles, scene);
-    }
-
-    // Lights
-    const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
-    scene.add(ambientLight);
-    const pointLight1 = new THREE.PointLight(0x3498db, 2, 50);
-    pointLight1.position.set(5, 5, 5);
-    scene.add(pointLight1);
-    const pointLight2 = new THREE.PointLight(0xe74c3c, 1.5, 50);
-    pointLight2.position.set(-5, -3, -5);
-    scene.add(pointLight2);
-
-    camera.position.set(0, 6, 15);
-    camera.lookAt(0, 2, -5);
-
-    let mouseX = 0;
-    const mouseSensitivity = 6;
-    document.addEventListener('mousemove', e => {
-      mouseX = (e.clientX / window.innerWidth - 0.5) * 2;
-    });
-
-    // Shatter effect
-    function createShatterEffect() {
-      const particleCount = 100;
-      const geometry = new THREE.SphereGeometry(0.15, 8, 8);
-      const color = sphereMat.color.getHex();
-
-      for (let i = 0; i < particleCount; i++) {
-        const mat = new THREE.MeshBasicMaterial({ color: color });
-        const particle = new THREE.Mesh(geometry, mat);
-        particle.position.copy(sphere.position);
-        particle.userData.velocity = new THREE.Vector3(
-          (Math.random() - 0.5) * 10,
-          Math.random() * 8,
-          (Math.random() - 0.5) * 10
-        );
-        particle.userData.rotationSpeed = new THREE.Vector3(
-          Math.random() * 5,
-          Math.random() * 5,
-          Math.random() * 5
-        );
-        scene.add(particle);
-        shatterParticles.push(particle);
-      }
-    }
-
-    function triggerGameOver() {
-      gameOver = true;
-      shatterTime = 0;
-      sphere.visible = false;
-      createShatterEffect();
-      comboDisplay.style.display = 'none';
-      // Update continue count display
-      document.getElementById('continueCount').textContent = '剩余继续次数：' + continueCount;
-      // Show continue button only if continues available
-      document.getElementById('continueBtn').style.display = continueCount > 0 ? 'block' : 'none';
-      setTimeout(() => {
-        document.getElementById('gameOver').style.display = 'block';
-      }, shatterDuration * 1000);
-    }
-
-    function restartGame() {
-      document.getElementById('gameOver').style.display = 'none';
-      shatterParticles.forEach(p => {
-        scene.remove(p);
-        p.geometry.dispose();
-        p.material.dispose();
-      });
-      shatterParticles = [];
-      ripples.forEach(r => {
-        if (r.parent) r.parent.remove(r);
-        r.geometry.dispose();
-        r.material.dispose();
-      });
-      ripples.length = 0;
-      segments.forEach(seg => {
-        seg.traverse(child => {
-          if (child.geometry) child.geometry.dispose();
-          if (child.material) child.material.dispose();
-        });
-        scene.remove(seg);
-      });
-      sphere.visible = true;
-      sphere.position.set(0, bounceHeight + sphereRadius, 0);
-      sphereMat.color.setHex(0x3498db);
-      sphereMat.emissive.setHex(0x000000);
-      sphereMat.emissiveIntensity = 0;
-      ballColor = 0x3498db;
-      collisionsToWin = LEVELS[currentLevel - 1].jumpsToWin;
-      targetDistance = collisionsToWin * 20; // 每跳约20米
-      initSegments();
-      sphereVY = 0;
-      onGround = true;
-      currentSegmentIndex = 0;
-      sharedVelocity = 0;
-      gameOver = false;
-      mouseX = 0;
-      comboCount = 0;
-      comboDisplay.style.display = 'none';
-      if (comboTimeout) clearTimeout(comboTimeout);
-      collisionCount = 0;
-      if (blackHole) {
-        scene.remove(blackHole);
-        blackHole.geometry.dispose();
-        blackHole.material.dispose();
-        blackHole = null;
-      }
-      blackHoleActive = false;
-      currentDistance = 0;
-      distanceDisplay.textContent = '0m';
-      targetDistanceEl.textContent = '???m';
-      speedBoostActive = false;
-      speedBoostTimer = 0;
-      clearSpeedBoostParticles();
-    }
-
-    document.getElementById('restartBtn').addEventListener('click', () => {
-      document.getElementById('gameOver').style.display = 'none';
-      gamePaused = true;
-      document.getElementById('levelSelect').style.display = 'flex';
-    });
-
-    document.getElementById('continueBtn').addEventListener('click', () => {
-      if (continueCount > 0) {
-        continueCount--;
-        document.getElementById('gameOver').style.display = 'none';
-
-        // Clean up shatter particles
-        cleanupArray(shatterParticles, scene);
-
-        // Resume game - ball stays at current position in the track
-        sphere.visible = true;
-
-        // Get current segment to determine ball's correct position
-        const currentSeg = segments[currentSegmentIndex];
-
-        // Reset ball to starting position above current segment
-        sphere.position.set(0, bounceHeight + sphereRadius, currentSeg.position.z);
-
-        // Keep ball's current color
-        sphereMat.color.setHex(ballColor);
-        sphereMat.emissive.setHex(ballColor);
-        sphereMat.emissiveIntensity = 0.5;
-
-        // Reset physics state - ball should be falling
-        sphereVY = 0;
-        onGround = false; // Ball is in the air, not on ground
-        gameOver = false;
-        mouseX = 0;
-
-        // Reset speed boost state to avoid bugs
-        speedBoostActive = false;
-        speedBoostTimer = 0;
-        clearSpeedBoostParticles();
-
-        // Keep combo display hidden
-        comboDisplay.style.display = 'none';
-        if (comboTimeout) clearTimeout(comboTimeout);
-      }
-    });
-
-    let lastTime = performance.now();
-    
-    function animate(currentTime) {
-      requestAnimationFrame(animate);
-      const dt = Math.min((currentTime - lastTime) / 1000, 0.05); // Cap at 50ms to prevent huge jumps
-      lastTime = currentTime;
-
-      if (gameOver) {
-        shatterTime += dt;
-        shatterParticles.forEach(p => {
-          p.userData.velocity.y -= GRAVITY * dt;
-          p.position.addScaledVector(p.userData.velocity, dt);
-          p.rotation.x += p.userData.rotationSpeed.x * dt;
-          p.rotation.y += p.userData.rotationSpeed.y * dt;
-          p.rotation.z += p.userData.rotationSpeed.z * dt;
-          const alpha = 1 - shatterTime / shatterDuration;
-          p.material.opacity = alpha;
-          p.material.transparent = true;
-        });
-        camera.position.x = 0;
-        camera.position.y = 6;
-        camera.position.z = 15;
-        camera.lookAt(0, 2, -5);
-        renderer.render(scene, camera);
-        return;
-      }
-
-      // Skip physics updates when paused (level select shown)
-      if (gamePaused) {
-        renderer.render(scene, camera);
-        return;
-      }
-
-      // Calculate current gravity (3x if speed boost active)
-      const currentGravity = speedBoostActive ? GRAVITY * speedBoostGravityMultiplier : GRAVITY;
-
-      // Update speed boost timer
-      if (speedBoostActive) {
-        speedBoostTimer -= dt;
-        // Update particles orbiting around ball
-        updateSpeedBoostParticles(currentTime / 1000);
-        if (speedBoostTimer <= 0) {
-          speedBoostActive = false;
-          speedBoostTimer = 0;
-          // Clear speed boost particles
-          clearSpeedBoostParticles();
-        }
-      }
-
-      // Calculate effective velocity (2x when speed boost active)
-      const effectiveVelocity = sharedVelocity * (speedBoostActive ? speedBoostVelocityMultiplier : 1);
-
-      if (onGround) {
-        // Use currentGravity for bounce (includes speed boost multiplier)
-        sphereVY = Math.sqrt(2 * currentGravity * bounceHeight);
-        onGround = false;
-      }
-      sphereVY -= currentGravity * dt;
-      sphere.position.y += sphereVY * dt;
-
-      if (sphere.position.y <= groundY + sphereRadius) {
-        sphere.position.y = groundY + sphereRadius;
-        onGround = true;
-
-        const currentSeg = segments[currentSegmentIndex];
-        const nextIndex = (currentSegmentIndex + 1) % segments.length;
-        const nextSeg = segments[nextIndex];
-
-        // If landing on straight track, change ball color
-        if (currentSeg.userData.type === 'straight') {
-          const mesh = currentSeg.children[0];
-          const trackColor = currentSeg.userData.color;
-          createRipple(mesh, 0, 0, trackColor);
-          sphereMat.color.setHex(trackColor);
-          sphereMat.emissive.setHex(trackColor);
-          sphereMat.emissiveIntensity = 0.5;
-          ballColor = trackColor;
-          // pathColor = ball's current color
-          pathColor = ballColor;
-          // Survived! Show combo
-          showCombo();
-          collisionCount++;
-          // Check win condition
-          if (collisionCount >= collisionsToWin && !blackHoleActive) {
-            blackHoleActive = true;
-            // Spawn black hole ahead of current position
-            blackHoleZ = -30;
-            createBlackHole(blackHoleZ);
-          }
-        }
-
-        // Speed boost track - activate immediately
-        if (currentSeg.userData.type === 'speedBoost') {
-          createRipple(currentSeg.children[0], 0, 0, 0xffffff);
-          // Activate speed boost immediately for next bounce
-          speedBoostActive = true;
-          speedBoostTimer = speedBoostDuration;
-          createSpeedBoostParticles();
-          // Survived! Show combo
-          showCombo();
-          collisionCount++;
-          // Check win condition
-          if (collisionCount >= collisionsToWin && !blackHoleActive) {
-            blackHoleActive = true;
-            blackHoleZ = -30;
-            createBlackHole(blackHoleZ);
-          }
-        }
-
-        // Check collision for triple/double segments (straight excluded)
-        // Ball lands on one specific block based on X position
-        if (currentSeg.userData.type === 'triple' || currentSeg.userData.type === 'double') {
-          const ballX = sphere.position.x;
-          // Find which block the ball landed on based on X position
-          let landedBlock = null;
-          for (const block of currentSeg.children) {
-            const blockWorldX = currentSeg.position.x + block.position.x; // world position
-            const halfWidth = 1.0; // box width / 2
-            if (ballX >= blockWorldX - halfWidth && ballX <= blockWorldX + halfWidth) {
-              landedBlock = block;
-              break;
-            }
-          }
-          // If landed on a block, check if colors match
-          if (landedBlock) {
-            const blockColor = landedBlock.material.color.getHex();
-            // Create ripple on the specific block (local coordinates)
-            createRipple(landedBlock, 0, 0, blockColor);
-            
-            // Button press effect - push down the block
-            if (!landedBlock.userData.pressing) {
-              landedBlock.userData.pressing = true;
-              landedBlock.userData.pressTime = 0;
-            }
-            
-            if (blockColor !== ballColor) {
-              currentSegmentIndex = nextIndex;
-              triggerGameOver();
-              return;
-            }
-            // Survived! Show combo
-            showCombo();
-            collisionCount++;
-            // Check win condition
-            if (collisionCount >= collisionsToWin && !blackHoleActive) {
-              blackHoleActive = true;
-              blackHoleZ = -30;
-              createBlackHole(blackHoleZ);
-            }
-          } else {
-            // Didn't land on any block (between blocks) - game over
-            currentSegmentIndex = nextIndex;
-            triggerGameOver();
-            return;
-          }
-        }
-
-        // Distance between segment centers
-        const distance = Math.abs(nextSeg.position.z - currentSeg.position.z);
-        // Calculate bounce period based on currentGravity (includes speed boost multiplier)
-        // This ensures segments move so that ball lands at center
-        const actualBouncePeriod = 2 * Math.sqrt(2 * bounceHeight / currentGravity);
-        sharedVelocity = distance / actualBouncePeriod;
-        currentSegmentIndex = nextIndex;
-      }
-
-      sphere.position.x = Math.max(-3.0, Math.min(3.0, mouseX * mouseSensitivity));
-      sphere.rotation.z -= 0.03;
-
-      // Update distance - use actual z distance to black hole
-      if (blackHoleActive && blackHole) {
-        // Current distance is how far we've traveled (initial gap - current gap)
-        const initialGap = 30; // blackHoleZ is -30
-        const currentGap = Math.abs(blackHole.position.z - sphere.position.z);
-        currentDistance = initialGap - currentGap;
-        distanceDisplay.textContent = Math.floor(currentDistance) + 'm';
-        targetDistanceEl.textContent = '目标：' + Math.floor(currentGap) + 'm';
-      } else {
-        // Before black hole appears, estimate distance based on progress
-        distanceDisplay.textContent = Math.floor(currentDistance) + 'm';
-        targetDistanceEl.textContent = '目标：???m';
-      }
-
-      // Update button press animations for all segments
-      for (const seg of segments) {
-        if (seg.userData.type === 'triple' || seg.userData.type === 'double') {
-          for (const block of seg.children) {
-            if (block.userData.pressing) {
-              block.userData.pressTime += dt;
-              const pressDuration = 0.15; // Total animation duration
-              const pressDepth = 0.12; // How far to push down
-              
-              if (block.userData.pressTime < pressDuration) {
-                // Ease out cubic for smooth press
-                const t = block.userData.pressTime / pressDuration;
-                const easeOut = 1 - Math.pow(1 - t, 3);
-                block.position.y = block.userData.originalY - pressDepth * Math.sin(easeOut * Math.PI);
-                
-                // Brighten the block when pressed
-                block.material.emissiveIntensity = 0.5 + 0.5 * (1 - easeOut);
-              } else {
-                // Animation complete, reset
-                block.userData.pressing = false;
-                block.position.y = block.userData.originalY;
-                block.material.emissiveIntensity = 0.5;
-              }
-            }
-          }
-        }
-      }
-
-      // Move all segments and recycle
-
-      // Update ripples
-      for (let i = ripples.length - 1; i >= 0; i--) {
-        const ripple = ripples[i];
-        if (ripple.userData.disposed) continue;
-
-        ripple.userData.age += dt;
-
-        // Ripple ring expansion with feathering
-        if (ripple.userData.isRippleRing) {
-          if (ripple.userData.age < ripple.userData.delay) continue;
-          
-          const activeTime = ripple.userData.age - ripple.userData.delay;
-          const progress = activeTime / 1.2; // 1.2 second lifetime
-          
-          if (progress < 1) {
-            // Expand ring
-            const currentRadius = ripple.userData.maxRadius * progress;
-            const thickness = 0.15 * (1 - progress * 0.5); // Thinner as it expands
-            
-            ripple.geometry.dispose();
-            ripple.geometry = new THREE.RingGeometry(
-              Math.max(0.05, currentRadius - thickness),
-              currentRadius + thickness,
-              32
-            );
-            
-            // Fade out with feathering (slower fade at start, faster at end)
-            const fadeStart = 0.3;
-            if (progress > fadeStart) {
-              const fadeProgress = (progress - fadeStart) / (1 - fadeStart);
-              ripple.material.opacity = (1 - fadeProgress * fadeProgress) * 0.6;
-            } else {
-              // Fade in quickly
-              ripple.material.opacity = (progress / fadeStart) * 0.6;
-            }
-          } else {
-            // Remove
-            ripple.userData.disposed = true;
-            if (ripple.parent) ripple.parent.remove(ripple);
-            ripple.geometry.dispose();
-            ripple.material.dispose();
-            ripples.splice(i, 1);
-          }
-        }
-        
-        // Spray particles
-        else if (ripple.userData.isSpray) {
-          // Update position with gravity
-          ripple.position.x += ripple.userData.vx * dt;
-          ripple.position.z += ripple.userData.vz * dt;
-          ripple.position.y += ripple.userData.vy * dt;
-          
-          ripple.userData.vy -= 9.8 * dt; // Gravity
-          ripple.userData.vx *= 0.95; // Air resistance
-          ripple.userData.vz *= 0.95;
-          
-          // Fade out
-          ripple.userData.life -= ripple.userData.decay * dt;
-          ripple.material.opacity = Math.max(0, ripple.userData.life);
-          
-          // Remove when faded or below track
-          if (ripple.userData.life <= 0 || ripple.position.y < -0.3) {
-            ripple.userData.disposed = true;
-            if (ripple.parent) ripple.parent.remove(ripple);
-            ripple.geometry.dispose();
-            ripple.material.dispose();
-            ripples.splice(i, 1);
-          }
-        }
-        
-        // Impact glow flash
-        else if (ripple.userData.isGlow) {
-          const progress = ripple.userData.age / 0.3; // 0.3 second flash
-          
-          if (progress < 1) {
-            // Quick bright flash then fade
-            const intensity = Math.pow(1 - progress, 2);
-            ripple.material.opacity = intensity;
-            ripple.scale.set(1 + progress * 2, 1 + progress * 2, 1);
-          } else {
-            ripple.userData.disposed = true;
-            if (ripple.parent) ripple.parent.remove(ripple);
-            ripple.geometry.dispose();
-            ripple.material.dispose();
-            ripples.splice(i, 1);
-          }
-        }
-      }
-      for (let i = 0; i < segments.length; i++) {
-        const seg = segments[i];
-        seg.position.z += effectiveVelocity * dt;
-
-        if (seg.position.z > 30) {
-          // Clean up ripples first
-          if (seg.userData.ripples) {
-            for (const r of seg.userData.ripples) {
-              r.userData.disposed = true;
-              const idx = ripples.indexOf(r);
-              if (idx !== -1) ripples.splice(idx, 1);
-              if (r.parent) r.parent.remove(r);
-              r.geometry.dispose();
-              r.material.dispose();
-            }
-          }
-          seg.traverse(child => {
-            if (child.geometry) child.geometry.dispose();
-            if (child.material) child.material.dispose();
-          });
-          scene.remove(seg);
-
-          // Determine new segment type
-          let type;
-          const level = LEVELS[currentLevel - 1];
-          const distFromLastStraight = i - segments.findIndex(s => s.userData.type === 'straight');
-          if (distFromLastStraight >= 0 && (distFromLastStraight % 4 === 0)) {
-            type = 'straight';
-          } else {
-            // Get available types for current level (exclude 'straight')
-            const availableTypes = level.trackTypes.filter(t => t !== 'straight');
-            if (availableTypes.length > 0) {
-              // Give speedBoost lower probability (1/4 chance when available)
-              const nonSpeedTypes = availableTypes.filter(t => t !== 'speedBoost');
-              if (availableTypes.includes('speedBoost') && Math.random() < 0.2) {
-                type = 'speedBoost';
-              } else if (nonSpeedTypes.length > 0) {
-                type = nonSpeedTypes[Math.floor(Math.random() * nonSpeedTypes.length)];
-              } else {
-                type = availableTypes[0];
-              }
-            } else {
-              type = 'straight';
-            }
-          }
-
-          // Find the segment furthest back (smallest z) among remaining
-          let minZ = Infinity;
-          for (const s of segments) {
-            if (s.position.z < minZ) minZ = s.position.z;
-          }
-          // Place new segment immediately after the furthest-back segment
-          // Gap of 0.3 units ensures continuous track
-          const newZ = minZ - segmentLengths[type] - 0.3;
-          const newColor = type === 'straight' ? randomColor() : pathColor;
-          segments[i] = createSegment(type, newZ, newColor);
-          if (type === 'straight') {
-            pathColor = newColor;
-          }
-        }
-      }
-
-      // Black hole animation and ball absorption
-      if (blackHoleActive && blackHole) {
-        // Animate black hole spiral
-        blackHole.material.uniforms.uTime.value += dt;
-        blackHole.rotation.y += dt * 0.5;
-        blackHole.rotation.z += dt * 0.3;
-        
-        // Rotate rings in opposite directions
-        blackHole.children.forEach((child, index) => {
-          if (child.userData.isRing) {
-            child.rotation.z += dt * child.userData.rotationSpeed * (index % 2 === 0 ? 1 : -1);
-          }
-          if (child.userData.isParticles) {
-            child.rotation.y += dt * 1.5;
-          }
-        });
-
-        // Move black hole toward camera at same rate as segments move
-        blackHole.position.z += effectiveVelocity * dt;
-
-        // Check if ball is absorbed
-        const dist = sphere.position.distanceTo(blackHole.position);
-        if (dist < 2.5) {
-          // Ball absorbed by black hole - victory!
-          triggerVictory();
-          return;
-        }
-
-        // Pull ball toward black hole when close
-        if (dist < 10) {
-          const pullStrength = (10 - dist) * 0.01;
-          sphere.position.x += (blackHole.position.x - sphere.position.x) * pullStrength;
-          sphere.position.y += (blackHole.position.y - sphere.position.y) * pullStrength;
-          sphere.position.z += (blackHole.position.z - sphere.position.z) * pullStrength;
-        }
-      }
-
-      camera.position.x = 0;
-      camera.position.y = 6;
-      camera.position.z = 15;
-      camera.lookAt(0, 2, -5);
-      renderer.render(scene, camera);
-    }
-
-    // Show level select at start
-    updateLevelButtons();
-    gamePaused = true;
-    document.getElementById('levelSelect').style.display = 'flex';
-
-    animate(performance.now());
-
-    window.addEventListener('resize', () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
-    });
-  </script>
+  <script type="module" src="/src/main.js"></script>
 </body>
 </html>
