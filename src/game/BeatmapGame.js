@@ -111,6 +111,14 @@ export class BeatmapGame extends Game {
     this.ui.comboDisplay.style.display = 'none';
     this.glowLayer.intensity = 0.8;
     this.lastTime = performance.now();
+
+    // Set up render loop for BeatmapGame
+    this._renderLoopRunning = true;
+    this.engine.runRenderLoop(() => {
+      if (!this._renderLoopRunning) return;
+      this.update();
+      this.scene.render();
+    });
   }
 
   continueGame() {

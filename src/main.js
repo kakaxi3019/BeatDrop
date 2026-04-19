@@ -21,6 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (level.isTraining) {
       originalSelectLevel(levelId);
     } else {
+      currentGame.stopRenderLoop();
       currentGame = new BeatmapGame(canvas);
       window.onresize = () => { currentGame.resize(); };
       currentGame.selectLevel(levelId);

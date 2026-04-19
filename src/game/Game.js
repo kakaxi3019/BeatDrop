@@ -254,10 +254,16 @@ export class Game {
   start() {
     this.startLevel(1);
     this.showLevelSelect();
+    this._renderLoopRunning = true;
     this.engine.runRenderLoop(() => {
+      if (!this._renderLoopRunning) return;
       this.update();
       this.scene.render();
     });
+  }
+
+  stopRenderLoop() {
+    this._renderLoopRunning = false;
   }
 
   resize() { this.engine.resize(); }
