@@ -111,6 +111,8 @@ export class Game {
     // Track
     this.currentSegmentIndex = 0;
     this.sharedVelocity = 0;
+    this.skipCollisionFrames = 0; // 跳过几帧碰撞检测（用于 continueGame 后）
+    this.waitForLandingBeforeMove = false; // 等落地后再恢复 segments 移动
 
     // Mouse
     this.mouseX = 0;
@@ -288,6 +290,9 @@ export class Game {
     // Decrement landing cooldown
     if (this.landingCooldown > 0) this.landingCooldown -= dt;
 
+    // Decrement skipCollisionFrames
+    if (this.skipCollisionFrames > 0) this.skipCollisionFrames--;
+
     // Speed boost
     if (this.speedBoostActive) {
       this.speedBoostTimer -= dt;
@@ -309,21 +314,26 @@ export class Game {
 
     // 找到下一个要着陆的segment
     // 跳过已着陆的segment(seg.landed)和已过球的segment(z>2)
+    // 如果 skipCollisionFrames > 0，不执行搜索，让球先自然落到地面
     let pendingSegment = null;
     let pendingSegmentIndex = -1;
     let minZDist = Infinity;
-    for (let i = 0; i < this.trackManager.segments.length; i++) {
-      const seg = this.trackManager.segments[i];
-      if (seg.landed) continue;           // 已着陆过的跳过
-      if (seg.mesh.position.z > 2) continue; // 已经过了球的跳过
-      const zDist = Math.abs(ballZ - seg.mesh.position.z);
-      if (zDist > 10) continue;
-      if (Math.abs(ballX) > 3.0) continue;
-      if (this.justBounced) continue;
-      if (zDist < minZDist) {
-        minZDist = zDist;
-        pendingSegment = seg;
-        pendingSegmentIndex = i;
+
+    // skipCollisionFrames > 0 时，让球先自然下落，不设置 pendingSegment
+    if (!this.skipCollisionFrames || this.skipCollisionFrames <= 0) {
+      for (let i = 0; i < this.trackManager.segments.length; i++) {
+        const seg = this.trackManager.segments[i];
+        if (seg.landed) continue;           // 已着陆过的跳过
+        if (seg.mesh.position.z > 2) continue; // 已经过了球的跳过
+        const zDist = Math.abs(ballZ - seg.mesh.position.z);
+        if (zDist > 10) continue;
+        if (Math.abs(ballX) > 3.0) continue;
+        if (this.justBounced) continue;
+        if (zDist < minZDist) {
+          minZDist = zDist;
+          pendingSegment = seg;
+          pendingSegmentIndex = i;
+        }
       }
     }
 
@@ -358,13 +368,32 @@ export class Game {
       // Only trigger landing if ball has actually left the ground since last landing
       const landingSegIndex = this.currentBounceSegIndex >= 0 ? this.currentBounceSegIndex : -1;
       const landingSeg = landingSegIndex >= 0 ? this.trackManager.segments[landingSegIndex] : null;
-      
-                  if (landingSeg && this.ballLeftGround && this.landingCooldown <= 0) {
+
+      // skipCollisionFrames > 0 时，手动触发 landing 用于 lastLandedSegIndex
+      // 不检查 landingCooldown，确保能正确落地
+      if (this.skipCollisionFrames > 0 && this.lastLandedSegIndex >= 0 &&
+          this.lastLandedSegIndex < this.trackManager.segments.length && this.ballLeftGround) {
+        const seg = this.trackManager.segments[this.lastLandedSegIndex];
+        if (!seg.landed) {
+          this.ballLeftGround = false;
+          this.landingCooldown = 0.5;
+          this.justBounced = false;
+          this.currentBounceSegIndex = -1;
+          this.handleLanding(seg, this.lastLandedSegIndex, currentGravity);
+          // 落地后恢复 segments 移动
+          this.waitForLandingBeforeMove = false;
+          this.skipCollisionFrames = 0;
+          const bouncePeriod = 2 * Math.sqrt(2 * BOUNCE_HEIGHT / GRAVITY);
+          this.sharedVelocity = (SEGMENT_LENGTH + SEGMENT_GAP) / bouncePeriod;
+        }
+      } else if (landingSeg && this.ballLeftGround && this.landingCooldown <= 0) {
         this.ballLeftGround = false;
         this.landingCooldown = 0.5;
         this.justBounced = false; // 重置，允许下一帧可以触发新bounce
         this.currentBounceSegIndex = -1; // 重置landing后的segment跟踪
         this.handleLanding(landingSeg, landingSegIndex, currentGravity);
+        // 落地后恢复 segments 移动
+        this.waitForLandingBeforeMove = false;
       } else if (landingSeg) {
         // Ball is on a segment but conditions not met - just keep bouncing
         this.ballVY = Math.min(this.ballVY, 0);
@@ -379,14 +408,16 @@ export class Game {
     } else {
       this.justLandedSegment = null;
       // Ball is in the air: mark that it has left ground
-      if (this.ballVY > 0) this.ballLeftGround = true;
+      // Also set to true when falling so landing can trigger after cooldown
+      if (this.ballVY > 0 || this.ballVY < -1) this.ballLeftGround = true;
     }
 
     this.ball.rotation.z -= 0.03;
     }
 
     // Track segments — only move when playing (not during countdown)
-    if (this.gameState === 'playing') {
+    // Also pause when waitForLandingBeforeMove is true (continueGame 后等落地)
+    if (this.gameState === 'playing' && !this.waitForLandingBeforeMove) {
     for (let i = 0; i < this.trackManager.segments.length; i++) {
       const seg = this.trackManager.segments[i];
       seg.mesh.position.z += effectiveVelocity * dt;
@@ -412,6 +443,8 @@ export class Game {
   handleLanding(currentSeg, currentSegIndex, currentGravity) {
     // 标记此segment已着陆，搜索时不会再选它
     currentSeg.landed = true;
+    // 记录球最后跳上的 segment（无论成功或失败），用于 continueGame 时重置
+    this.lastLandedSegIndex = currentSegIndex;
 
     // Trigger track ripple shader (handles the sinking/depression animation)
     currentSeg.triggerRipple(this.currentTime);
@@ -481,7 +514,6 @@ export class Game {
     }
 
     this.currentSegmentIndex = currentSegIndex;
-    this.lastLandedSegIndex = currentSegIndex;
   }
 
   getBlockIndex(ballX, segmentType) {

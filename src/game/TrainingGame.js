@@ -189,15 +189,12 @@ export class TrainingGame extends Game {
     this.ballLeftGround = true;
     this.justLandedSegment = null;
     this.landingCooldown = 0;
-    for (let i = 0; i < this.trackManager.segments.length; i++) {
-      const seg = this.trackManager.segments[i];
-      if (seg.mesh.position.z > 2) {
-        seg.landed = false;
-      }
-    }
-    this.lastLandedSegIndex = -1;
     this.currentBounceSegIndex = -1;
     this.justBounced = false;
+    // 记录球最后跳上的 segment 索引（用于倒计时结束后重置其 landed 状态）
+    this.lastLandedSegIndexBeforeContinue = this.lastLandedSegIndex;
+    // 跳过几帧碰撞检测，让球先自然落到目标 segment 上
+    this.skipCollisionFrames = 5;
     this.gameState = 'countdown';
     this.speedBoostActive = false;
     this.speedBoostTimer = 0;
@@ -220,21 +217,27 @@ export class TrainingGame extends Game {
         this.ui.countdownDisplay.style.display = 'none';
         this.gameState = 'playing';
         this.lastTime = performance.now();
-        const bouncePeriod = 2 * Math.sqrt(2 * BOUNCE_HEIGHT / GRAVITY);
-        const normalSpeed = (SEGMENT_LENGTH + SEGMENT_GAP) / bouncePeriod;
-        let nearestSegDist = Infinity;
+        // 重置所有 segments 的 landed 状态
         for (let i = 0; i < this.trackManager.segments.length; i++) {
-          const segZ = this.trackManager.segments[i].mesh.position.z;
-          if (segZ <= 2) {
-            nearestSegDist = Math.min(nearestSegDist, Math.abs(segZ));
-          }
+          this.trackManager.segments[i].landed = false;
         }
-        if (nearestSegDist === Infinity) nearestSegDist = SEGMENT_LENGTH + SEGMENT_GAP;
-        if (nearestSegDist < 4) {
-          this.sharedVelocity = normalSpeed;
-        } else {
-          const calculatedSpeed = nearestSegDist / bouncePeriod;
-          this.sharedVelocity = Math.min(calculatedSpeed, normalSpeed * 2);
+        // 重置 landingCooldown 和 justBounced
+        this.landingCooldown = 0;
+        this.justBounced = false;
+        // 设置 currentBounceSegIndex
+        this.currentBounceSegIndex = this.lastLandedSegIndexBeforeContinue;
+        // 先停止 segments 移动，让球先落到轨道上
+        this.sharedVelocity = 0;
+        this.waitForLandingBeforeMove = true; // 标志：等落地后再移动
+        // 直接将球放到目标 segment 正上方，让它直接落在这个 segment 上
+        if (this.currentBounceSegIndex >= 0 &&
+            this.currentBounceSegIndex < this.trackManager.segments.length) {
+          const targetSeg = this.trackManager.segments[this.currentBounceSegIndex];
+          // 将球放到目标 segment 正上方，足够高让它落下时触发 landing
+          this.ball.position.set(0, BOUNCE_HEIGHT + SPHERE_RADIUS + 2, 0);
+          this.ballVY = 0;
+          this.onGround = false;
+          this.ballLeftGround = true;
         }
       }
     }, 1000);
