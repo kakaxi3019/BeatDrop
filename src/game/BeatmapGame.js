@@ -1,14 +1,9 @@
 import { Game, BOUNCE_HEIGHT, SPHERE_RADIUS, SEGMENT_LENGTH, SEGMENT_GAP, GRAVITY } from './Game.js';
 import { BeatmapTrackManager } from './BeatmapTrackManager.js';
 import { TrainingGame } from './TrainingGame.js';
+import { LEVELS } from '../config/levels.js';
 
 const { Color3, Vector3 } = BABYLON;
-
-const ALL_LEVELS = [
-  { id: 1, name: "Miller's Planet", nameCn: "训练关 1", trackTypes: ['straight'], jumpsToWin: 5, isTraining: true },
-  { id: 2, name: "Mann's World", nameCn: "训练关 2", trackTypes: ['straight', 'double', 'triple'], jumpsToWin: 8, isTraining: true },
-  { id: 3, name: "Echoes of Earth", nameCn: "第3关", trackTypes: ['straight', 'double', 'triple'], jumpsToWin: 'dynamic', isTraining: false }
-];
 
 export class BeatmapGame extends Game {
   constructor(canvas) {
@@ -27,9 +22,9 @@ export class BeatmapGame extends Game {
     return '音乐驱动 · 根据重音生成轨道';
   }
 
-  async loadBeatmap() {
+  async loadBeatmap(levelConfig) {
     try {
-      const response = await fetch('./src/audio/beatmap-level3.json');
+      const response = await fetch(levelConfig.beatmapFile);
       this.beatmap = await response.json();
       this.collisionsToWin = this.beatmap.totalSegments;
       return true;
@@ -39,18 +34,21 @@ export class BeatmapGame extends Game {
     }
   }
 
-  setupAudio() {
+  setupAudio(levelConfig) {
     if (this.audioElement) {
       this.audioElement.pause();
       this.audioElement = null;
     }
-    this.audioElement = new Audio('./music/BetweenWorlds.mp3');
+    this.audioElement = new Audio(levelConfig.audioFile);
     this.audioElement.loop = false;
   }
 
   async startLevel(levelId) {
-    if (levelId !== 3) {
-      // Switch to TrainingGame for non-level-3
+    const level = LEVELS.find(l => l.id === levelId);
+    if (!level) return;
+
+    if (level.isTraining) {
+      // Switch to TrainingGame for training levels
       const trainingGame = new TrainingGame(this.canvas);
       trainingGame.unlockedLevels = this.unlockedLevels;
       trainingGame.start();
@@ -59,14 +57,11 @@ export class BeatmapGame extends Game {
       return;
     }
 
-    const loaded = await this.loadBeatmap();
+    const loaded = await this.loadBeatmap(level);
     if (!loaded) {
-      console.error('Failed to load beatmap for level 3');
+      console.error('Failed to load beatmap');
       return;
     }
-
-    const level = ALL_LEVELS.find(l => l.id === levelId);
-    if (!level) return;
 
     this.currentLevel = levelId;
     this.collisionCount = 0;
@@ -101,9 +96,9 @@ export class BeatmapGame extends Game {
     // Init track
     this.trackManager.initialize(level, this.beatmap);
 
-    // Start audio at 28 seconds
-    this.setupAudio();
-    this.audioElement.currentTime = 28;
+    // Start audio at offset
+    this.setupAudio(level);
+    this.audioElement.currentTime = level.startOffset;
     this.audioElement.play();
 
     // UI
@@ -201,7 +196,7 @@ export class BeatmapGame extends Game {
 
   buildLevelList() {
     this.ui.levelList.innerHTML = '';
-    for (const level of ALL_LEVELS) {
+    for (const level of LEVELS) {
       const btn = document.createElement('button');
       const isLocked = !this.unlockedLevels.includes(level.id);
       btn.className = 'level-btn' + (isLocked ? ' locked' : '') + (level.isTraining ? ' training' : '');
@@ -220,23 +215,22 @@ export class BeatmapGame extends Game {
   }
 
   selectLevel(levelId) {
-    if (levelId === 3) {
-      // Stay in BeatmapGame
-      if (!this.unlockedLevels.includes(levelId)) return;
-      this.ui.levelSelect.style.display = 'none';
-      this.startLevel(levelId);
-    } else {
+    const level = LEVELS.find(l => l.id === levelId);
+    if (!level) return;
+    if (!this.unlockedLevels.includes(levelId)) return;
+
+    this.ui.levelSelect.style.display = 'none';
+
+    if (level.isTraining) {
       // Switch to TrainingGame
-      if (!this.unlockedLevels.includes(levelId)) return;
-      this.ui.levelSelect.style.display = 'none';
-      // Create TrainingGame and start the level
       const trainingGame = new TrainingGame(this.canvas);
       trainingGame.unlockedLevels = this.unlockedLevels;
       trainingGame.start();
       trainingGame.selectLevel(levelId);
-      // Replace current game reference in main.js would be needed
-      // For now, dispatch a custom event
       window.dispatchEvent(new CustomEvent('gameSwitch', { detail: { game: trainingGame } }));
+    } else {
+      // Stay in BeatmapGame
+      this.startLevel(levelId);
     }
   }
 
@@ -245,12 +239,12 @@ export class BeatmapGame extends Game {
     this.ball.visibility = 0;
     this.ball.scaling.set(1, 1, 1);
     this.unlockNextLevel();
-    const level = ALL_LEVELS[this.currentLevel - 1];
+    const level = LEVELS.find(l => l.id === this.currentLevel);
     const victoryTitle = document.querySelector('#victory h1');
     if (victoryTitle) victoryTitle.textContent = level.name;
     const victorySubtitle = document.querySelector('#victory p');
-    if (victorySubtitle) victorySubtitle.textContent = this.currentLevel < ALL_LEVELS.length ? '关卡完成!' : '恭喜通关全部关卡!';
-    this.ui.nextLevelBtn.style.display = this.currentLevel < ALL_LEVELS.length ? 'block' : 'none';
+    if (victorySubtitle) victorySubtitle.textContent = this.currentLevel < LEVELS.length ? '关卡完成!' : '恭喜通关全部关卡!';
+    this.ui.nextLevelBtn.style.display = this.currentLevel < LEVELS.length ? 'block' : 'none';
     this.ui.comboDisplay.style.display = 'none';
     this.ui.victory.style.display = 'block';
     if (this.audioElement) {
