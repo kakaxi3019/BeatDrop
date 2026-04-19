@@ -1,5 +1,6 @@
 import { TrainingGame } from './game/TrainingGame.js';
 import { BeatmapGame } from './game/BeatmapGame.js';
+import { LEVELS } from './config/levels.js';
 
 // Wait for DOM to be ready
 document.addEventListener('DOMContentLoaded', () => {
@@ -13,16 +14,16 @@ document.addEventListener('DOMContentLoaded', () => {
     window.onresize = () => { currentGame.resize(); };
   });
 
-  // Override selectLevel to handle level 3
   const originalSelectLevel = currentGame.selectLevel.bind(currentGame);
   currentGame.selectLevel = (levelId) => {
-    if (levelId === 3) {
-      // Switch to BeatmapGame
+    const level = LEVELS.find(l => l.id === levelId);
+    if (!level) return;
+    if (level.isTraining) {
+      originalSelectLevel(levelId);
+    } else {
       currentGame = new BeatmapGame(canvas);
       window.onresize = () => { currentGame.resize(); };
-      currentGame.selectLevel(3);
-    } else {
-      originalSelectLevel(levelId);
+      currentGame.selectLevel(levelId);
     }
   };
 
