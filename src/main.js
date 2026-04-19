@@ -1,15 +1,31 @@
-import { Game } from './game/Game.js';
+import { TrainingGame } from './game/TrainingGame.js';
+import { BeatmapGame } from './game/BeatmapGame.js';
 
 // Wait for DOM to be ready
 document.addEventListener('DOMContentLoaded', () => {
   const canvas = document.getElementById('renderCanvas');
 
-  // Create and start the game
-  const game = new Game(canvas);
-  game.start();
+  let currentGame = new TrainingGame(canvas);
 
-  // Handle window resize
-  window.addEventListener('resize', () => {
-    game.resize();
+  // Handle game switching
+  window.addEventListener('gameSwitch', (e) => {
+    currentGame = e.detail.game;
+    window.onresize = () => { currentGame.resize(); };
   });
+
+  // Override selectLevel to handle level 3
+  const originalSelectLevel = currentGame.selectLevel.bind(currentGame);
+  currentGame.selectLevel = (levelId) => {
+    if (levelId === 3) {
+      // Switch to BeatmapGame
+      currentGame = new BeatmapGame(canvas);
+      window.onresize = () => { currentGame.resize(); };
+      currentGame.selectLevel(3);
+    } else {
+      originalSelectLevel(levelId);
+    }
+  };
+
+  currentGame.start();
+  window.onresize = () => { currentGame.resize(); };
 });

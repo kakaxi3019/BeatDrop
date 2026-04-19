@@ -1,10 +1,11 @@
-import {
+// Babylon.js loaded via CDN
+const {
   MeshBuilder,
   StandardMaterial,
   ShaderMaterial,
   Color3,
   Effect
-} from '@babylonjs/core';
+} = BABYLON;
 
 import { rippleVertexShader, rippleFragmentShader, outerRippleVertexShader, outerRippleFragmentShader } from '../shaders/ripple.js';
 
@@ -41,6 +42,7 @@ export class TrackSegment {
     // Index maps directly to block index (straight/speedBoost → index 0)
     this.outerRippleStates  = [];
     this.outerRippleDuration = 2.0;
+    this.landed = false; // 是否已被球着陆过
 
     this.create();
   }
@@ -359,41 +361,17 @@ export class TrackManager {
     this.pathColor    = null;
   }
 
-  initialize(levelConfig, beatmap = null) {
-    this.clear();
-    this.levelConfig    = levelConfig;
-    this.availableTypes = levelConfig.trackTypes;
-    this.pathColor      = null;
-    this.blocksSinceLastStraight = 0;
-    this.beatmap = beatmap;
-    this.beatmapIndex = 0;
-
-    const firstColor = this.randomColor();
-    this.pathColor   = firstColor.color;
-
-    if (beatmap) {
-      // 音乐驱动模式：使用beatmap数据生成轨道
-      this.generateFromBeatmap(firstColor);
-    } else {
-      // 原有模式：固定数量轨道
-      this.segments.push(this.createSegment('straight', 0, firstColor));
-      let currentZ = SEGMENT_LENGTH + this.segmentGap;
-      for (let i = 1; i < 25; i++) {
-        const type = this.selectNextSegmentType();
-        let segColor;
-        if (type === 'straight') {
-          segColor = this.randomColor();
-          this.pathColor = segColor.color;
-        } else {
-          segColor = { key: null, color: this.pathColor };
-        }
-        this.segments.push(this.createSegment(type, -currentZ, segColor));
-        currentZ += SEGMENT_LENGTH + this.segmentGap;
-      }
-    }
+  initialize(levelConfig) {
+    // 子类实现
+    throw new Error('initialize() must be implemented by subclass');
   }
 
   selectNextSegmentType() {
+    // Training level 1: only straight tracks
+    if (this.availableTypes.length === 1 && this.availableTypes[0] === 'straight') {
+      return 'straight';
+    }
+    
     this.blocksSinceLastStraight++;
     if (this.blocksSinceLastStraight % 4 === 0) {
       this.blocksSinceLastStraight = 0;
@@ -402,37 +380,11 @@ export class TrackManager {
     const available = this.availableTypes.filter(t => t !== 'straight');
     if (available.length === 0) return 'straight';
     if (available.includes('speedBoost') && Math.random() < 0.2) {
-      // Don't reset counter for speed boost, it replaces a complex block
       return 'speedBoost';
     }
     const others = available.filter(t => t !== 'speedBoost');
     if (others.length > 0) return others[Math.floor(Math.random() * others.length)];
     return available[0];
-  }
-
-  generateFromBeatmap(firstColor) {
-    const beatmap = this.beatmap;
-
-    // 第一个轨道
-    this.segments.push(this.createSegment('straight', 0, firstColor));
-
-    let currentZ = SEGMENT_LENGTH + this.segmentGap;
-
-    for (let i = 0; i < beatmap.segmentTypes.length; i++) {
-      const type = beatmap.segmentTypes[i];
-      const spacing = beatmap.spacing[i];
-
-      let segColor;
-      if (type === 'straight') {
-        segColor = this.randomColor();
-        this.pathColor = segColor.color;
-      } else {
-        segColor = { key: null, color: this.pathColor };
-      }
-
-      this.segments.push(this.createSegment(type, -currentZ, segColor));
-      currentZ += spacing;
-    }
   }
 
   createSegment(type, zPosition, color) {
@@ -461,25 +413,8 @@ export class TrackManager {
   }
 
   recycleSegment(index, newZ) {
-    this.segments[index].dispose();
-
-    if (!this.beatmap) {
-      // 原有模式
-      const type = this.selectNextSegmentType();
-      let color;
-      if (type === 'straight') {
-        color = this.randomColor();
-        this.pathColor = color.color;
-      } else {
-        color = { key: null, color: this.pathColor };
-      }
-      const newSeg = this.createSegment(type, newZ, color);
-      this.segments[index] = newSeg;
-      return newSeg;
-    } else {
-      // 音乐驱动模式：不再回收，因为轨道数量固定
-      return null;
-    }
+    // 子类实现
+    throw new Error('recycleSegment() must be implemented by subclass');
   }
 
   clear() {

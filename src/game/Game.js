@@ -1,4 +1,5 @@
-import {
+// Babylon.js loaded via CDN
+const {
   Engine,
   Scene,
   ArcRotateCamera,
@@ -15,24 +16,17 @@ import {
   Mesh,
   Effect,
   Texture
-} from '@babylonjs/core';
+} = BABYLON;
 
 import { TrackManager, COLORS } from './Track.js';
 
-// Level configurations
-const LEVELS = [
-  { id: 1, name: "Miller's Planet", nameCn: "第1关", trackTypes: ['straight', 'double'], jumpsToWin: 1 },
-  { id: 2, name: "Mann's World", nameCn: "第2关", trackTypes: ['straight', 'double', 'triple'], jumpsToWin: 10 },
-  { id: 3, name: "Echoes of Earth", nameCn: "第3关", trackTypes: ['straight', 'double', 'triple'], jumpsToWin: 'dynamic' }
-];
-
 // Physics constants
-const GRAVITY = 25;
-const BOUNCE_HEIGHT = 1.5;
-const GROUND_Y = 0;
-const SPHERE_RADIUS = 0.9;
-const SEGMENT_LENGTH = 8;
-const SEGMENT_GAP = 0.3;
+export const GRAVITY = 25;
+export const BOUNCE_HEIGHT = 1.5;
+export const GROUND_Y = 0;
+export const SPHERE_RADIUS = 0.9;
+export const SEGMENT_LENGTH = 8;
+export const SEGMENT_GAP = 0.3;
 
 // Black hole shader
 const blackHoleVertexShader = `
@@ -103,6 +97,9 @@ export class Game {
     this.onGround = true;
     this.ballColor = new Color3(0.2, 0.6, 0.9);
     this.pathColor = this.ballColor;
+    this.justBounced = false; // 防止连续多帧重复设置ballVY
+    this.lastLandedSegIndex = -1; // 跟踪上次着陆的segment索引，防止重复着陆
+    this.currentBounceSegIndex = -1; // 当前bounce对应的segment索引
 
     // Speed boost
     this.speedBoostActive = false;
@@ -143,12 +140,6 @@ export class Game {
     this.currentTime = 0;
     this.shatterTime = 0;
     this.shatterDuration = 1;
-
-    // Beatmap (Level 3)
-    this.beatmap = null;
-    this.audioElement = null;
-    this.savedAudioTime = 0;
-    this.isLastSegmentApproaching = false;
 
     this.setupCamera();
     this.setupLights();
@@ -233,21 +224,13 @@ export class Game {
   }
 
   buildLevelList() {
-    this.ui.levelList.innerHTML = '';
-    for (const level of LEVELS) {
-      const btn = document.createElement('button');
-      btn.className = 'level-btn' + (this.unlockedLevels.includes(level.id) ? '' : ' locked');
-      btn.innerHTML = `<span class="level-num">${level.nameCn}</span><span class="level-name">${level.name}</span><span class="level-desc">${this.getLevelDescription(level)}</span><span class="lock-icon">🔒</span>`;
-      btn.onclick = () => this.selectLevel(level.id);
-      this.ui.levelList.appendChild(btn);
-    }
+    // 子类实现
+    throw new Error('buildLevelList() must be implemented by subclass');
   }
 
   getLevelDescription(level) {
-    if (level.id === 1) return '训练关 · 直线 + 少量双色轨道 · 1跳';
-    if (level.id === 2) return '训练关 · 直线 + 双色 + 三色轨道 · 10跳';
-    if (level.id === 3) return '音乐驱动 · 根据重音生成轨道';
-    return '混合轨道';
+    // 子类实现
+    throw new Error('getLevelDescription() must be implemented by subclass');
   }
 
   setupEventListeners() {
@@ -277,101 +260,9 @@ export class Game {
 
   resize() { this.engine.resize(); }
 
-  async loadBeatmap() {
-    try {
-      const response = await fetch('./src/audio/beatmap-level3.json');
-      this.beatmap = await response.json();
-      this.collisionsToWin = this.beatmap.totalSegments;
-      return true;
-    } catch (e) {
-      console.error('Failed to load beatmap:', e);
-      return false;
-    }
-  }
-
-  setupAudio() {
-    if (this.audioElement) {
-      this.audioElement.pause();
-      this.audioElement = null;
-    }
-    this.audioElement = new Audio('./music/BetweenWorlds.mp3');
-    this.audioElement.loop = false;
-  }
-
-  async startLevel(levelId) {
-    const level = LEVELS.find(l => l.id === levelId);
-    if (!level) return;
-
-    // 第3关：加载beatmap
-    if (levelId === 3) {
-      const loaded = await this.loadBeatmap();
-      if (!loaded) {
-        console.error('Failed to load beatmap for level 3');
-        return;
-      }
-    }
-
-    this.currentLevel = levelId;
-    this.collisionCount = 0;
-    this.collisionsToWin = level.jumpsToWin;
-    this.continueCount = 3;
-    this.speedBoostActive = false;
-    this.speedBoostTimer = 0;
-    this.blackHoleActive = false;
-    this.blackHoleSucking = false;
-    this.comboCount = 0;
-
-    // Reset ball
-    this.ballColor = new Color3(0.2, 0.6, 0.9);
-    this.ballMaterial.diffuseColor = this.ballColor;
-    this.ballMaterial.emissiveColor = this.ballColor.scale(0.2);
-    this.ballMaterial.emissiveIntensity = 0;
-    this.ball.visibility = 1;
-    // 第3关特殊：球从高处落下
-    if (levelId === 3) {
-      this.ball.position = new Vector3(0, 8, 0); // 从y=8高处落下
-      this.ballVY = 0;
-      this.onGround = false;
-      this.ballLeftGround = true;
-    } else {
-      this.ball.position = new Vector3(0, BOUNCE_HEIGHT + SPHERE_RADIUS, 0);
-      this.ballVY = 0;
-      this.onGround = true;
-      this.justLandedSegment = null;
-      this.landingCooldown = 0;
-      this.ballLeftGround = true;
-    }
-    this.currentSegmentIndex = 0;
-    this.sharedVelocity = 0;
-    this.gameState = 'playing';
-
-    // Clear effects
-    this.clearAllEffects();
-
-    // Init track
-    this.trackManager.initialize(level, levelId === 3 ? this.beatmap : null);
-
-    // Velocity
-    // Initialize sharedVelocity to 0 so the track doesn't move until the ball first lands
-    this.sharedVelocity = 0;
-
-    // UI
-    this.ui.levelNum.textContent = level.nameCn;
-    this.ui.levelTitle.textContent = level.name;
-    this.ui.currentDistance.textContent = '0m';
-    this.ui.targetDistance.textContent = '???m';
-    this.ui.gameOver.style.display = 'none';
-    this.ui.victory.style.display = 'none';
-    this.ui.comboDisplay.style.display = 'none';
-    this.glowLayer.intensity = 0.8;
-    this.lastTime = performance.now();
-
-    // 第3关：启动音乐从28秒开始
-    if (levelId === 3) {
-      this.setupAudio();
-      this.audioElement.currentTime = 28;
-      this.audioElement.play();
-    }
+  startLevel(levelId) {
+    // 子类实现
+    throw new Error('startLevel() must be implemented by subclass');
   }
 
   update() {
@@ -413,42 +304,51 @@ export class Game {
 
     // Ball physics
     if (!this.blackHoleSucking) {
-    if (this.onGround) {
-      this.ballVY = Math.sqrt(2 * currentGravity * BOUNCE_HEIGHT);
-      this.onGround = false;
-    }
-    this.ballVY -= currentGravity * dt;
-    this.ball.position.y += this.ballVY * dt;
-
-    // Find the segment under the ball before moving (based on z position)
-    const ballZ = 0; // Ball stays at z=0, segments move toward it
+    const ballZ = 0;
     const ballX = this.ball.position.x;
-    let segmentUnderBall = null;
-    let segmentUnderBallIndex = -1;
 
+    // 找到下一个要着陆的segment
+    // 跳过已着陆的segment(seg.landed)和已过球的segment(z>2)
+    let pendingSegment = null;
+    let pendingSegmentIndex = -1;
     let minZDist = Infinity;
-
     for (let i = 0; i < this.trackManager.segments.length; i++) {
       const seg = this.trackManager.segments[i];
-      const segZ = seg.mesh.position.z;
-
-      // Z boundary check: segment depth is 1.5, so half is 0.75
-      const zDist = ballZ - segZ;
-      if (Math.abs(zDist) > 0.75) continue;
-
-      // X boundary check: straight is width 6 (half=3), double/triple have blocks
-      // Use full track width for segment detection, then check individual block in handleLanding
-      const segHalfW = 3.0;
-
-      if (Math.abs(ballX) > segHalfW) continue;
-
-      const dist = Math.abs(zDist);
-      if (dist < minZDist) {
-        minZDist = dist;
-        segmentUnderBall = seg;
-        segmentUnderBallIndex = i;
+      if (seg.landed) continue;           // 已着陆过的跳过
+      if (seg.mesh.position.z > 2) continue; // 已经过了球的跳过
+      const zDist = Math.abs(ballZ - seg.mesh.position.z);
+      if (zDist > 10) continue;
+      if (Math.abs(ballX) > 3.0) continue;
+      if (this.justBounced) continue;
+      if (zDist < minZDist) {
+        minZDist = zDist;
+        pendingSegment = seg;
+        pendingSegmentIndex = i;
       }
     }
+
+    if (this.onGround) {
+      if (pendingSegment && !this.justBounced) {
+        this.ballVY = Math.sqrt(2 * currentGravity * BOUNCE_HEIGHT);
+        this.onGround = false;
+        this.justBounced = true;
+        this.currentBounceSegIndex = pendingSegmentIndex;
+      } else {
+        // No pending segment - stay on ground, wait for next segment to arrive
+        this.ballVY = 0;
+        this.justBounced = false;
+        // Give a small hop to keep the game feeling alive
+        if (pendingSegmentIndex < 0 && this.ballLeftGround) {
+          this.ballVY = Math.sqrt(2 * currentGravity * BOUNCE_HEIGHT * 0.3);
+          this.onGround = false;
+        }
+      }
+    } else {
+      this.justBounced = false;
+    }
+
+    this.ballVY -= currentGravity * dt;
+    this.ball.position.y += this.ballVY * dt;
 
     // Ground collision - check if ball reached ground
     if (this.ball.position.y <= GROUND_Y + SPHERE_RADIUS) {
@@ -456,17 +356,25 @@ export class Game {
       this.onGround = true;
 
       // Only trigger landing if ball has actually left the ground since last landing
-      if (segmentUnderBall && this.ballLeftGround && this.landingCooldown <= 0) {
+      const landingSegIndex = this.currentBounceSegIndex >= 0 ? this.currentBounceSegIndex : -1;
+      const landingSeg = landingSegIndex >= 0 ? this.trackManager.segments[landingSegIndex] : null;
+      
+                  if (landingSeg && this.ballLeftGround && this.landingCooldown <= 0) {
         this.ballLeftGround = false;
         this.landingCooldown = 0.5;
-        this.handleLanding(segmentUnderBall, segmentUnderBallIndex, currentGravity);
-      }
-
-      // 第3关：检查是否跳完所有轨道
-      if (this.currentLevel === 3 && this.collisionCount >= this.beatmap.totalSegments && !this.blackHoleActive) {
-        this.blackHoleActive = true;
-        this.blackHoleZ = -50;
-        this.createBlackHole();
+        this.justBounced = false; // 重置，允许下一帧可以触发新bounce
+        this.currentBounceSegIndex = -1; // 重置landing后的segment跟踪
+        this.handleLanding(landingSeg, landingSegIndex, currentGravity);
+      } else if (landingSeg) {
+        // Ball is on a segment but conditions not met - just keep bouncing
+        this.ballVY = Math.min(this.ballVY, 0);
+      } else if (!this.justBounced && this.ballLeftGround) {
+        // No segment found - bounce back up and try to find segment next time
+        // Don't immediately game over, give the ball a chance
+        this.ballVY = Math.sqrt(2 * currentGravity * BOUNCE_HEIGHT * 0.5);
+        this.onGround = false;
+        this.ballLeftGround = false;
+        this.landingCooldown = 0.3;
       }
     } else {
       this.justLandedSegment = null;
@@ -475,7 +383,7 @@ export class Game {
     }
 
     this.ball.rotation.z -= 0.03;
-    } // End physics check
+    }
 
     // Track segments — only move when playing (not during countdown)
     if (this.gameState === 'playing') {
@@ -494,35 +402,17 @@ export class Game {
       }
     }
 
-    // 第3关：距离计数器
-    if (this.currentLevel === 3 && this.beatmap) {
-      const totalSegments = this.beatmap.totalSegments;
-      const lastSegIndex = this.trackManager.segments.length - 1;
-      const lastSeg = this.trackManager.segments[lastSegIndex];
-
-      // 检查最后一个轨道是否已进入屏幕范围（Z > -5 且 Z < 15）
-      if (lastSeg && !this.isLastSegmentApproaching) {
-        if (lastSeg.mesh.position.z > -5 && lastSeg.mesh.position.z < 15) {
-          this.isLastSegmentApproaching = true;
-        }
-      }
-
-      if (this.isLastSegmentApproaching) {
-        // 显示剩余距离
-        const remaining = Math.max(0, lastSeg.mesh.position.z + 5);
-        this.ui.targetDistance.textContent = Math.round(remaining) + 'm';
-        this.ui.currentDistance.textContent = Math.round(this.sharedVelocity * this.currentTime) + 'm';
-      }
-    }
-    }
-
     // Update effects
     this.updateRipples(dt);
     this.updateBlackHole(effectiveVelocity, dt);
     this.updateDistanceDisplay();
   }
+  }
 
   handleLanding(currentSeg, currentSegIndex, currentGravity) {
+    // 标记此segment已着陆，搜索时不会再选它
+    currentSeg.landed = true;
+
     // Trigger track ripple shader (handles the sinking/depression animation)
     currentSeg.triggerRipple(this.currentTime);
 
@@ -533,7 +423,7 @@ export class Game {
       this.ballMaterial.emissiveIntensity = 0.2;
       this.pathColor = this.ballColor;
       currentSeg.triggerOuterRipple(0);
-      this.onSurvived();
+            this.onSurvived();
 
     } else if (currentSeg.type === 'speedBoost') {
       this.speedBoostActive = true;
@@ -549,7 +439,6 @@ export class Game {
       if (blockIndex >= 0 && currentSeg.blocks && currentSeg.blocks[blockIndex]) {
         const blockColor = currentSeg.blocks[blockIndex].blockColor;
         if (blockColor && this.colorsMatch(this.ballColor, blockColor)) {
-          // Trigger block press animation
           const block = currentSeg.blocks[blockIndex];
           block.pressing = true;
           block.pressTime = 0;
@@ -560,35 +449,39 @@ export class Game {
           return;
         }
       } else {
-        this.onGameOver();
-        return;
+          this.onGameOver();
+          return;
       }
     }
 
-    // Find next segment (the one behind in Z since tracks start at negative Z and move to +Z)
-    let nextSeg = null;
+    // Find the next unlanded segment to calculate velocity
     let maxPrevZ = -Infinity;
+    // Find the next unlanded segment to calculate velocity
+    let nextSeg = null;
+    let nextSegDist = Infinity;
     for (let i = 0; i < this.trackManager.segments.length; i++) {
       const seg = this.trackManager.segments[i];
-      if (seg.mesh.position.z < currentSeg.mesh.position.z && seg.mesh.position.z > maxPrevZ) {
-        maxPrevZ = seg.mesh.position.z;
+      if (seg.landed) continue;
+      if (seg.mesh.position.z > 2) continue; // skip segments past the ball
+      const dist = Math.abs(seg.mesh.position.z);
+      if (dist < nextSegDist) {
+        nextSegDist = dist;
         nextSeg = seg;
       }
     }
 
     // Calculate velocity based on distance to next segment
     if (nextSeg) {
-      // Calculate distance relative to 0 (the ball's Z) to eliminate integration drift over time
       const distanceToZero = Math.abs(nextSeg.mesh.position.z);
       const bouncePeriod = 2 * Math.sqrt(2 * BOUNCE_HEIGHT / currentGravity);
       this.sharedVelocity = distanceToZero / bouncePeriod;
     } else {
-      // No next segment found, use minimum forward velocity to keep ball moving
       const bouncePeriod = 2 * Math.sqrt(2 * BOUNCE_HEIGHT / currentGravity);
       this.sharedVelocity = (SEGMENT_LENGTH + SEGMENT_GAP) / bouncePeriod;
     }
 
     this.currentSegmentIndex = currentSegIndex;
+    this.lastLandedSegIndex = currentSegIndex;
   }
 
   getBlockIndex(ballX, segmentType) {
@@ -604,15 +497,23 @@ export class Game {
   }
 
   colorsMatch(c1, c2) {
-    const threshold = 0.15;
+    const threshold = 0.35;
     return Math.abs(c1.r - c2.r) < threshold && Math.abs(c1.g - c2.g) < threshold && Math.abs(c1.b - c2.b) < threshold;
   }
 
   onSurvived() {
-    this.showCombo();
     this.collisionCount++;
+        try {
+      this.showCombo();
+    } catch (e) {
+      console.error('showCombo error:', e);
+    }
     if (this.collisionCount >= this.collisionsToWin && !this.blackHoleActive) {
-      this.activateBlackHole();
+            try {
+        this.activateBlackHole();
+      } catch (e) {
+        console.error('activateBlackHole error:', e);
+      }
     }
   }
 
@@ -696,55 +597,58 @@ export class Game {
 
     const dist = Vector3.Distance(this.ball.position, this.blackHole.position);
     
-    // Suck-in logic towards the direct center of the goal
-    if (dist < 5) {
+    // Only start sucking when ball has landed on all remaining tracks
+    // 检查球和黑洞之间是否还有未着陆的轨道
+    let anyUnlandedBetween = false;
+    if (this.blackHole) {
+      for (let i = 0; i < this.trackManager.segments.length; i++) {
+        const seg = this.trackManager.segments[i];
+        const segZ = seg.mesh.position.z;
+        if (!seg.landed && segZ <= 2) {
+          anyUnlandedBetween = true;
+          break;
+        }
+      }
+    }
+    const allTracksLanded = !anyUnlandedBetween;
+    
+    if (allTracksLanded && !this.blackHoleSucking) {
+      // Ball has passed all tracks - start pulling towards black hole
       this.blackHoleSucking = true;
     }
 
     if (this.blackHoleSucking) {
+      // Stop normal ball physics - take over movement
+      this.onGround = false;
+      this.ballVY = 0;
+      
       // Move ball with the track movement so relative distance closes correctly
       this.ball.position.z += effectiveVelocity * dt;
 
-      const pullStrength = dt * 5.0; 
-      // Pull heavily towards center
+      const pullStrength = dt * 3.0;
+      // Pull towards black hole
       this.ball.position = Vector3.Lerp(this.ball.position, this.blackHole.position, pullStrength);
       
       // Visually shrink ball to look like it's getting sucked in
-      const scaleDown = Math.max(0.01, dist / 5);
+      const scaleDown = Math.max(0.01, dist / 8);
       this.ball.scaling.set(scaleDown, scaleDown, scaleDown);
     }
     
-    // Victory trigger - more lenient distance or if ball is already tiny
-    if (dist < 1.5 || (this.blackHoleSucking && this.ball.scaling.x < 0.1)) {
+    // Victory trigger - close enough or ball is tiny
+    if ((this.blackHoleSucking && dist < 1.0) || (this.blackHoleSucking && this.ball.scaling.x < 0.1)) {
       this.triggerVictory();
       return;
     }
   }
 
   triggerVictory() {
-    this.gameState = 'victory';
-    this.ball.visibility = 0;
-    this.ball.scaling.set(1,1,1); // reset for next play
-    this.unlockNextLevel();
-    const level = LEVELS[this.currentLevel - 1];
-    const victoryTitle = document.querySelector('#victory h1');
-    if (victoryTitle) victoryTitle.textContent = level.name;
-    const victorySubtitle = document.querySelector('#victory p');
-    if (victorySubtitle) victorySubtitle.textContent = this.currentLevel < LEVELS.length ? '关卡完成!' : '恭喜通关全部关卡!';
-    this.ui.nextLevelBtn.style.display = this.currentLevel < LEVELS.length ? 'block' : 'none';
-    this.ui.comboDisplay.style.display = 'none';
-    this.ui.victory.style.display = 'block';
-    if (this.audioElement) {
-      this.audioElement.pause();
-      this.audioElement = null;
-    }
+    // 子类实现
+    throw new Error('triggerVictory() must be implemented by subclass');
   }
 
   unlockNextLevel() {
-    const nextLevel = this.currentLevel + 1;
-    if (nextLevel <= LEVELS.length && !this.unlockedLevels.includes(nextLevel)) {
-      this.unlockedLevels.push(nextLevel);
-    }
+    // 子类实现
+    throw new Error('unlockNextLevel() must be implemented by subclass');
   }
 
   createRippleEffect(segment) {
@@ -885,29 +789,48 @@ export class Game {
     this.ui.continueBtn.style.display = this.continueCount > 0 ? 'block' : 'none';
     this.ui.comboDisplay.style.display = 'none';
     setTimeout(() => { this.ui.gameOver.style.display = 'block'; }, this.shatterDuration * 1000);
-    if (this.audioElement) {
-      this.savedAudioTime = this.audioElement.currentTime;
-      this.audioElement.pause();
-    }
   }
 
   continueGame() {
     if (this.continueCount <= 0) return;
     this.continueCount--;
-    this.ui.gameOver.style.display = 'none';
-    this.clearShatterParticles();
+    this.blackHoleSucking = false;
+    this.blackHoleActive = false;
+    // 移除黑洞
+    if (this.blackHole) {
+      try {
+        this.blackHole.dispose();
+      } catch (e) { console.error('blackHole dispose error:', e); }
+      this.blackHole = null;
+    }
+    // 恢复球的正常大小和可见性
+    this.ball.scaling.set(1, 1, 1);
     this.ball.visibility = 1;
+    this.clearShatterParticles();
+    this.ui.gameOver.style.display = 'none';
+    // 球始终在z=0附近弹跳，轨道移向球
     this.ball.position.set(0, BOUNCE_HEIGHT + SPHERE_RADIUS, 0);
     this.ballMaterial.diffuseColor = this.ballColor;
     this.ballMaterial.emissiveColor = this.ballColor.scale(0.2);
     this.ballMaterial.emissiveIntensity = 0;
     this.sharedVelocity = 0;
     this.ballVY = 0;
-    this.onGround = false;
+    this.onGround = true;
+    this.ballLeftGround = true;
     this.justLandedSegment = null;
     this.landingCooldown = 0;
-    this.ballLeftGround = true;
-    this.currentSegmentIndex = 0;
+    // 重置已过球(z>2)的segment的landed标记
+    // 这些segment已经被回收/即将被回收，landed标记不应影响新球
+    for (let i = 0; i < this.trackManager.segments.length; i++) {
+      const seg = this.trackManager.segments[i];
+      if (seg.mesh.position.z > 2) {
+        seg.landed = false;
+      }
+    }
+    // lastLandedSegIndex 不再用于搜索，但保留用于其他逻辑
+    this.lastLandedSegIndex = -1;
+    this.currentBounceSegIndex = -1;
+    this.justBounced = false;
     this.gameState = 'countdown';
     this.speedBoostActive = false;
     this.speedBoostTimer = 0;
@@ -930,10 +853,23 @@ export class Game {
         this.ui.countdownDisplay.style.display = 'none';
         this.gameState = 'playing';
         this.lastTime = performance.now();
-        // 继续时恢复音频
-        if (this.currentLevel === 3 && this.audioElement) {
-          this.audioElement.currentTime = this.savedAudioTime || 28;
-          this.audioElement.play();
+        // 计算速度：找到最近的未经过(z<=2)的segment的距离
+        const bouncePeriod = 2 * Math.sqrt(2 * BOUNCE_HEIGHT / GRAVITY);
+        const normalSpeed = (SEGMENT_LENGTH + SEGMENT_GAP) / bouncePeriod;
+        let nearestSegDist = Infinity;
+        for (let i = 0; i < this.trackManager.segments.length; i++) {
+          const segZ = this.trackManager.segments[i].mesh.position.z;
+          if (segZ <= 2) {
+            nearestSegDist = Math.min(nearestSegDist, Math.abs(segZ));
+          }
+        }
+        if (nearestSegDist === Infinity) nearestSegDist = SEGMENT_LENGTH + SEGMENT_GAP;
+        // 如果轨道已经很近(z<4)，用正常速度；否则按距离计算
+        if (nearestSegDist < 4) {
+          this.sharedVelocity = normalSpeed;
+        } else {
+          const calculatedSpeed = nearestSegDist / bouncePeriod;
+          this.sharedVelocity = Math.min(calculatedSpeed, normalSpeed * 2);
         }
       }
     }, 1000);
@@ -960,10 +896,7 @@ export class Game {
   }
 
   nextLevel() {
-    if (this.currentLevel < LEVELS.length) {
-      this.startLevel(this.currentLevel + 1);
-    } else {
-      this.returnToLevelSelect();
-    }
+    // 子类实现
+    throw new Error('nextLevel() must be implemented by subclass');
   }
 }
