@@ -1,139 +1,182 @@
 import fs from 'fs';
 import audioDecode from 'audio-decode';
 
-const MUSIC_FILE = '../../music/BetweenWorlds.mp3';
+const MUSIC_FILE = '/home/centos/mypro/github/BeatDrop/music/BetweenWorlds.mp3';
 const START_OFFSET = 28;
 
-// 检测能量突增（Attack Detection）
-function detectEnergyAttacks(samples, sampleRate) {
-  // 1. 计算短时能量
-  const windowSize = Math.floor(sampleRate * 0.02); // 20ms窗口
-  const hopSize = Math.floor(windowSize / 4);
-
-  const energy = [];
-  for (let i = 0; i < samples.length - windowSize; i += hopSize) {
-    let sum = 0;
-    for (let j = 0; j < windowSize; j++) {
-      sum += samples[i + j] * samples[i + j];
-    }
-    energy.push(sum / windowSize);
-  }
-
-  // 2. 计算能量比值（当前帧 / 局部均值）- 捕捉突增
-  const localWindow = Math.floor(sampleRate / hopSize * 0.1); // 100ms局部窗口
-  const attackRatio = [];
-
-  for (let i = localWindow; i < energy.length - localWindow; i++) {
-    // 计算局部均值（排除当前帧）
-    let localSum = 0;
-    for (let j = -localWindow; j <= localWindow; j++) {
-      if (j !== 0) localSum += energy[i + j];
-    }
-    const localMean = localSum / (2 * localWindow);
-
-    // 当前帧与局部均值的比值
-    const ratio = localMean > 0 ? energy[i] / localMean : 0;
-    attackRatio.push({
-      ratio,
-      t: (i * hopSize) / sampleRate,
-      energy: energy[i]
-    });
-  }
-
-  // 3. 找显著的突增：比值超过阈值的局部最大值
-  // 使用对数阈值，更符合人耳感知
-  const ratios = attackRatio.map(a => a.ratio).sort((a, b) => a - b);
-  const ratioMedian = ratios[Math.floor(ratios.length / 2)];
-  const ratioQ75 = ratios[Math.floor(ratios.length * 0.75)];
-  const ratioQ90 = ratios[Math.floor(ratios.length * 0.90)];
-
-  console.log('Ratio stats: median =', ratioMedian.toFixed(3), ', Q75 =', ratioQ75.toFixed(3), ', Q90 =', ratioQ90.toFixed(3));
-
-  // 使用Q75作为基础阈值，只捕捉明显突增
-  const baseThreshold = ratioQ75;
-
-  const onsets = [];
-  const minFramesBetween = Math.floor(sampleRate / hopSize * 0.15); // 150ms最小间隔
-  const lookbackWindow = Math.floor(sampleRate / hopSize * 0.05); // 50ms回溯窗口
-
-  for (let i = 5; i < attackRatio.length - 5; i++) {
-    const current = attackRatio[i];
-
-    // 是局部最大值（5帧窗口内）
-    let isLocalMax = true;
-    for (let j = i - 5; j <= i + 5; j++) {
-      if (j !== i && attackRatio[j].ratio > current.ratio) {
-        isLocalMax = false;
-        break      }
-    }
-
-    // 超过阈值
-    if (isLocalMax && current.ratio > baseThreshold) {
-      // 在之前的50ms窗口内是否有更强的峰值？
-      let hasStrongerBefore = false;
-      for (let j = i - lookbackWindow; j < i; j++) {
-        if (j >= 0 && attackRatio[j].ratio > current.ratio * 0.8) {
-          hasStrongerBefore = true;
-          break;
-        }
-      }
-
-      if (!hasStrongerBefore) {
-        // 检查与上一个onset的间隔
-        const lastOnsetIdx = onsets.length > 0 ? onsets[onsets.length - 1] : -1;
-
-        if (lastOnsetIdx < 0 || i - lastOnsetIdx >= minFramesBetween) {
-          onsets.push(i);
-        }
-      }
-    }
-  }
-
-  // 转换为时间
-  return onsets.map(idx => attackRatio[idx].t);
-}
-
 async function main() {
-  console.log('Loading audio file...');
   const fileBuffer = fs.readFileSync(MUSIC_FILE);
   const audioBuffer = await audioDecode(fileBuffer);
+  const left = audioBuffer.channelData[0];
+  const right = audioBuffer.channelData[1];
 
-  console.log('Audio decoded. Duration:', (audioBuffer.channelData[0].length / audioBuffer.sampleRate).toFixed(2), 's');
-
-  // Get channel data and create mono mix
-  const leftChannel = audioBuffer.channelData[0];
-  const rightChannel = audioBuffer.channelData[1];
-  const mono = new Float32Array(leftChannel.length);
-  for (let i = 0; i < leftChannel.length; i++) {
-    mono[i] = (leftChannel[i] + rightChannel[i]) / 2;
+  const mono = new Float32Array(left.length);
+  for (let i = 0; i < left.length; i++) {
+    mono[i] = (left[i] + right[i]) / 2;
   }
 
-  console.log('Detecting energy attacks...');
-  let onsets = detectEnergyAttacks(mono, audioBuffer.sampleRate);
+  const sampleRate = audioBuffer.sampleRate;
 
-  // 过滤 START_OFFSET 之后
-  onsets = onsets.filter(t => t >= START_OFFSET);
+  // 计算短时能量
+  const windowSize = Math.floor(sampleRate * 0.01);
+  const hopSize = Math.floor(windowSize / 2);
 
-  console.log('Total onsets after filtering:', onsets.length);
+  const energy = [];
+  for (let i = 0; i < mono.length - windowSize; i += hopSize) {
+    let sum = 0;
+    for (let j = 0; j < windowSize; j++) {
+      sum += mono[i + j] * mono[i + j];
+    }
+    energy.push({ e: sum / windowSize, t: i / sampleRate });
+  }
 
-  // Calculate segment types (random 33% each)
-  const segmentTypes = onsets.map(() => {
-    const r = Math.random();
-    if (r < 0.333) return 'straight';
-    if (r < 0.666) return 'double';
-    return 'triple';
+  // 计算 flux
+  const flux = [];
+  for (let i = 1; i < energy.length; i++) {
+    const diff = Math.max(0, energy[i].e - energy[i - 1].e);
+    flux.push({ v: diff, t: energy[i].t });
+  }
+
+  // 检测所有候选项（用较低的阈值保留足够的选择余地）
+  const allFlux = flux.map(f => f.v).sort((a, b) => a - b);
+  const threshold = allFlux[Math.floor(allFlux.length * 0.85)];
+
+  // 最小间隔0.65s（接近bounce周期0.693s）
+  const MIN_INTERVAL = 0.65;
+
+  let candidates = [];
+  for (let i = 3; i < flux.length - 3; i++) {
+    const curr = flux[i].v;
+    let isLocalMax = true;
+    for (let j = i - 3; j <= i + 3; j++) {
+      if (j !== i && flux[j].v >= curr) {
+        isLocalMax = false;
+        break;
+      }
+    }
+    if (isLocalMax && curr > threshold) {
+      const t = flux[i].t;
+      if (candidates.length === 0 || t - candidates[candidates.length - 1].t >= MIN_INTERVAL) {
+        candidates.push({ t, v: curr });
+      }
+    }
+  }
+
+  candidates = candidates.filter(c => c.t >= START_OFFSET);
+
+  // 按时间段分组，每段只保留最强的N个onset
+  // bounce周期0.693s，理想间距8.3m，velocity=12时
+  // 每段时间内onset数量要控制，避免轨道过密
+  const TIME_WINDOW = 15; // 每15秒一段
+  const MAX_PER_WINDOW = 8; // 每段最多8个（~2秒一个onset）
+
+  const onsets = [];
+  for (let windowStart = START_OFFSET; windowStart < 300; windowStart += TIME_WINDOW) {
+    const windowEnd = windowStart + TIME_WINDOW;
+    const inWindow = candidates
+      .filter(c => c.t >= windowStart && c.t < windowEnd)
+      .sort((a, b) => b.v - a.v) // 按强度降序
+      .slice(0, MAX_PER_WINDOW)   // 只保留最强的MAX_PER_WINDOW个
+      .sort((a, b) => a.t - b.t); // 按时间排序
+    onsets.push(...inWindow.map(c => c.t));
+  }
+
+  console.log('Total onsets:', onsets.length);
+  for (let start = 28; start < 324; start += 30) {
+    const count = onsets.filter(t => t >= start && t < start + 30).length;
+    console.log(`${start}s-${start + 30}s: ${count} onsets`);
+  }
+
+  // 计算每个onset对应的能量值
+  const onsetEnergies = onsets.map(onsetTime => {
+    // 在energy数组中找到对应时间的能量值
+    const idx = energy.findIndex(e => e.t >= onsetTime);
+    if (idx === -1) return energy[energy.length - 1].e;
+    return energy[idx].e;
   });
 
-  // Calculate spacing
-  const BASE_SPACING = 8.3;
-  const spacing = [];
+  // 归一化能量值到0-1范围
+  const minEnergy = Math.min(...onsetEnergies);
+  const maxEnergy = Math.max(...onsetEnergies);
+  const rangeEnergy = maxEnergy - minEnergy;
 
+  // 轨道类型：根据能量强度决定
+  // 低能量（安静部分）→ 大部分直轨
+  // 高能量（高潮部分）→ 更多双轨和三轨
+  const segmentTypes = onsets.map((_, i) => {
+    const normEnergy = rangeEnergy > 0 ? (onsetEnergies[i] - minEnergy) / rangeEnergy : 0;
+
+    // 前30%的onset（音乐开头部分）主要用直轨，简化难度
+    const isEarlyPhase = i < onsets.length * 0.3;
+
+    if (isEarlyPhase) {
+      // 开头的音乐：80%直轨，15%双轨，5%三轨
+      const r = Math.random();
+      if (r < 0.80) return 'straight';
+      if (r < 0.95) return 'double';
+      return 'triple';
+    } else {
+      // 中后期：根据能量决定
+      // 低于中位能量：直轨为主
+      // 高于中位能量：双轨和三轨为主
+      if (normEnergy < 0.4) {
+        const r = Math.random();
+        if (r < 0.70) return 'straight';
+        if (r < 0.90) return 'double';
+        return 'triple';
+      } else if (normEnergy < 0.7) {
+        const r = Math.random();
+        if (r < 0.30) return 'straight';
+        if (r < 0.70) return 'double';
+        return 'triple';
+      } else {
+        const r = Math.random();
+        if (r < 0.15) return 'straight';
+        if (r < 0.50) return 'double';
+        return 'triple';
+      }
+    }
+  });
+
+  console.log('\nSegment type distribution:');
+  const counts = { straight: 0, double: 0, triple: 0 };
+  segmentTypes.forEach(t => counts[t]++);
+  console.log(`  straight: ${counts.straight} (${(counts.straight / segmentTypes.length * 100).toFixed(1)}%)`);
+  console.log(`  double: ${counts.double} (${(counts.double / segmentTypes.length * 100).toFixed(1)}%)`);
+  console.log(`  triple: ${counts.triple} (${(counts.triple / segmentTypes.length * 100).toFixed(1)}%)`);
+
+  // 按时间分段统计
+  console.log('\nSegment types by time period:');
+  for (let start = 28; start < 324; start += 30) {
+    const inRange = segmentTypes.filter((_, i) => onsets[i] >= start && onsets[i] < start + 30);
+    if (inRange.length > 0) {
+      const s = inRange.filter(t => t === 'straight').length;
+      const d = inRange.filter(t => t === 'double').length;
+      const tr = inRange.filter(t => t === 'triple').length;
+      console.log(`  ${start}s-${start + 30}s: straight=${s}, double=${d}, triple=${tr}`);
+    }
+  }
+
+  // 计算间距
+  // bouncePeriod = 2 * sqrt(2 * 1.5 / 25) = 0.693s
+  // bounce距离 = 8.3m（velocity=12时）
+  // 目标：spacing = onset_interval × TARGET_VELOCITY
+  // TARGET_VELOCITY = 12，使得interval=0.693s时spacing=8.3m（理想）
+  // interval=0.5s时spacing=6m（偏小），interval=1s时spacing=12m（偏大）
+  const TARGET_VELOCITY = 12;
+  const MIN_SPACING = 6.5; // 防止过密（保证不重叠）
+  const MAX_SPACING = 13;  // 防止过大
+
+  const spacing = [];
   for (let i = 0; i < onsets.length - 1; i++) {
     const interval = onsets[i + 1] - onsets[i];
-    const spacingCoeff = Math.max(0.6, Math.min(5, interval / 0.4));
-    spacing.push(BASE_SPACING * spacingCoeff);
+    let s = interval * TARGET_VELOCITY;
+    s = Math.max(MIN_SPACING, Math.min(MAX_SPACING, s));
+    spacing.push(s);
   }
-  spacing.push(BASE_SPACING * 3);
+  spacing.push(15); // 最后一个到黑洞的间距
+
+  console.log('\nFirst 10 spacing:', spacing.slice(0, 10).map(s => s.toFixed(1)));
 
   const output = {
     songName: 'BetweenWorlds',
@@ -144,35 +187,8 @@ async function main() {
     totalSegments: onsets.length
   };
 
-  const outPath = '../../src/audio/beatmap-level3.json';
-  fs.writeFileSync(outPath, JSON.stringify(output, null, 2));
-  console.log('Beatmap saved. Total segments:', output.totalSegments);
-
-  // 打印各时间段分布
-  if (onsets.length > 1) {
-    const ranges = [
-      [28, 60],
-      [60, 120],
-      [120, 180],
-      [180, 240],
-      [240, 324]
-    ];
-
-    console.log('\nOnsets per time range:');
-    for (const [start, end] of ranges) {
-      const count = onsets.filter(t => t >= start && t < end).length;
-      const pct = (count / onsets.length * 100).toFixed(1);
-      console.log(`  ${start}s - ${end}s:`, count, `onsets (${pct}%)`);
-    }
-
-    // 间隔统计
-    const intervals = [];
-    for (let i = 1; i < Math.min(onsets.length, 100); i++) {
-      intervals.push(onsets[i] - onsets[i-1]);
-    }
-    intervals.sort((a, b) => a - b);
-    console.log('\nFirst 100 intervals: min =', intervals[0].toFixed(2), 's, median =', intervals[Math.floor(intervals.length/2)].toFixed(2), 's, max =', intervals[intervals.length-1].toFixed(2), 's');
-  }
+  fs.writeFileSync('/home/centos/mypro/github/BeatDrop/src/audio/beatmap-level3.json', JSON.stringify(output, null, 2));
+  console.log('Saved.');
 }
 
 main().catch(console.error);
