@@ -1,6 +1,0 @@
-- generic [active] [ref=e1]:
-  - generic:
-    - generic: 23m
-    - generic: 目标：203m
-  - generic [ref=e3]: 第1关 Miller's Planet
-  - button "菜单" [ref=e4] [cursor=pointer]

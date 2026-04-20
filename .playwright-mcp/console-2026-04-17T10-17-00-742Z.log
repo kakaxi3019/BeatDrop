@@ -1,9 +1,0 @@
-[      89ms] [LOG] BJS - [18:17:00]: Babylon.js v7.54.3 - WebGL2 @ http://localhost:3000/node_modules/.vite/deps/chunk-OJJXGLTO.js?v=cb7da367:44
-[   12319ms] [LOG] OFFCENTER -0.785 vel 11.98 @ http://localhost:3000/src/game/Game.js?t=1776421017018:543
-[   13681ms] [LOG] OFFCENTER -0.886 vel 11.98 @ http://localhost:3000/src/game/Game.js?t=1776421017018:543
-[   15026ms] [LOG] OFFCENTER -1.133 vel 11.98 @ http://localhost:3000/src/game/Game.js?t=1776421017018:543
-[   16366ms] [LOG] OFFCENTER -1.453 vel 11.98 @ http://localhost:3000/src/game/Game.js?t=1776421017018:543
-[   51049ms] [LOG] BJS - [18:17:51]: Babylon.js v7.54.3 - WebGL2 @ http://localhost:3000/node_modules/.vite/deps/chunk-OJJXGLTO.js?v=cb7da367:44
-[   73737ms] [LOG] BJS - [18:18:14]: Babylon.js v7.54.3 - WebGL2 @ http://localhost:3000/node_modules/.vite/deps/chunk-OJJXGLTO.js?v=cb7da367:44
-[  115604ms] [LOG] BJS - [18:18:56]: Babylon.js v7.54.3 - WebGL2 @ http://localhost:3000/node_modules/.vite/deps/chunk-OJJXGLTO.js?v=cb7da367:44
-[  125822ms] [LOG] BJS - [18:19:06]: Babylon.js v7.54.3 - WebGL2 @ http://localhost:3000/node_modules/.vite/deps/chunk-OJJXGLTO.js?v=cb7da367:44

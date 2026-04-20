@@ -1,9 +1,0 @@
-- generic [active] [ref=e1]:
-  - generic:
-    - generic: GREAT
-    - generic: x7
-  - generic:
-    - generic: 140m
-    - generic: "???m"
-  - generic [ref=e3]: 第2关 Mann's World
-  - button "菜单" [ref=e4] [cursor=pointer]

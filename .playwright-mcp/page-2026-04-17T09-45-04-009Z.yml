@@ -1,6 +1,0 @@
-- generic [active] [ref=e1]:
-  - generic:
-    - generic: 1040m
-    - generic: "???m"
-  - generic [ref=e3]: 第4关 Gargantua's Edge
-  - button "菜单" [ref=e4] [cursor=pointer]
